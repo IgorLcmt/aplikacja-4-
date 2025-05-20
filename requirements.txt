@@ -1,9 +1,9 @@
 streamlit
 pandas
 numpy
+openai>=1.2.0,<2.0.0
 scikit-learn
 beautifulsoup4
 requests
 xlsxwriter
 openpyxl
-openai>=1.2.0,<2.0.0

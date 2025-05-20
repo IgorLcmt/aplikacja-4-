@@ -1,0 +1,110 @@
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import hashlib
+import os
+import openai
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import normalize
+import requests
+from bs4 import BeautifulSoup
+import time
+import joblib
+import pickle
+import io
+
+# === Streamlit Configuration ===
+st.set_page_config(page_title="CMT analiza mnożników pod wycene 🔍", layout="wide")
+
+# === Load API Key ===
+api_key = st.secrets.get("openai", {}).get("api_key")
+if not api_key:
+    st.error("❌ OpenAI API key is missing. Please check your secrets configuration.")
+    st.stop()
+
+# === Initialize session state ===
+if "results" not in st.session_state:
+    st.session_state.results = None
+
+if "scraped_cache" not in st.session_state:
+    st.session_state.scraped_cache = {}
+
+# === Load database ===
+@st.cache_data
+def load_database():
+    df = pd.read_excel("app_data/Database.xlsx")
+    df.columns = [col.strip() for col in df.columns]
+    df = df.rename(columns={
+        'Business Description\n(Target/Issuer)': 'Business Description',
+        'Primary Industry\n(Target/Issuer)': 'Primary Industry'
+    })
+    df = df.dropna(subset=[
+        'Target/Issuer Name', 'MI Transaction ID', 'Implied Enterprise Value/ EBITDA (x)',
+        'Business Description', 'Primary Industry'])
+    return df
+
+# === Embed text via OpenAI ===
+def embed_text(texts, api_key):
+    response = openai.Embedding.create(
+        input=texts,
+        engine="text-embedding-ada-002",
+        api_key=api_key
+    )
+    return [r["embedding"] for r in response["data"]]
+
+# === Scrape web page ===
+def scrape_website(url):
+    if url in st.session_state.scraped_cache:
+        return st.session_state.scraped_cache[url]
+    try:
+        response = requests.get(url, timeout=5)
+        soup = BeautifulSoup(response.text, "html.parser")
+        text = soup.get_text(separator=" ", strip=True)
+        st.session_state.scraped_cache[url] = text
+        return text
+    except Exception as e:
+        return ""
+
+# === Sidebar input ===
+query_input = st.sidebar.text_area("🎨 Paste company profile here:", height=200)
+
+# === Main logic ===
+if api_key and query_input:
+    with st.spinner("Embedding and finding initial matches..."):
+        df = load_database()
+        descriptions = df["Business Description"].tolist()
+        embeds = embed_text(descriptions + [query_input], api_key)
+        db_embeds = np.array(embeds[:-1])
+        query_embed = np.array(embeds[-1]).reshape(1, -1)
+        scores = cosine_similarity(db_embeds, query_embed).flatten()
+        top20_idx = np.argsort(scores)[-20:][::-1]
+        df_top20 = df.iloc[top20_idx].copy()
+
+    with st.spinner("Scraping top 20 sites..."):
+        scraped_texts = []
+        for url in df_top20["Website URL"]:
+            scraped_texts.append(scrape_website(url))
+
+    with st.spinner("Re-ranking after scraping..."):
+        full_texts = [desc + "\n" + web for desc, web in zip(df_top20["Business Description"], scraped_texts)]
+        embeds = embed_text(full_texts + [query_input], api_key)
+        final_embeds = np.array(embeds[:-1])
+        final_query = np.array(embeds[-1]).reshape(1, -1)
+        final_scores = cosine_similarity(final_embeds, final_query).flatten()
+        df_top20["Score"] = final_scores
+        df_final = df_top20.sort_values("Score", ascending=False).head(10)
+        st.session_state.results = df_final
+
+    st.success("🚀 Top 10 Matches Ready")
+    st.dataframe(df_final, use_container_width=True)
+
+    # === Excel export ===
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_final.to_excel(writer, index=False, sheet_name="Top Matches")
+        writer.save()
+    st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Top_Matches.xlsx")
+
+elif not query_input:
+    st.info("👉 Enter your OpenAI API key and a company profile to begin.")

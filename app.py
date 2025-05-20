@@ -45,14 +45,15 @@ def load_database():
     return df
 
 # === Embed text via OpenAI ===
-def embed_text(texts, api_key):
-    response = openai.Embedding.create(
-        input=texts,
-        engine="text-embedding-ada-002",
-        api_key=api_key
-    )
-    return [r["embedding"] for r in response["data"]]
+from openai import OpenAI
 
+def embed_text(texts, api_key):
+    client = OpenAI(api_key=api_key)
+    response = client.embeddings.create(
+        input=texts,
+        model="text-embedding-ada-002"
+    )
+    return [record.embedding for record in response.data]
 # === Scrape web page ===
 def scrape_website(url):
     if url in st.session_state.scraped_cache:

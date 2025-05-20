@@ -5,7 +5,6 @@ import numpy as np
 import hashlib
 import os
 import openai
-print(openai.__version__)
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
 import requests
@@ -47,6 +46,7 @@ def load_database():
 
 # === Embed text via OpenAI ===
 from openai import OpenAI
+print(openai.__version__)
 
 def embed_text(texts, api_key):
     client = OpenAI(api_key=api_key)

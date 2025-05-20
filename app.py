@@ -33,7 +33,7 @@ if "scraped_cache" not in st.session_state:
 # === Load database ===
 @st.cache_data
 def load_database():
-    df = pd.read_excel("app_data/Database.xlsx")
+    df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
     df.columns = [col.strip() for col in df.columns]
     df = df.rename(columns={
         'Business Description\n(Target/Issuer)': 'Business Description',

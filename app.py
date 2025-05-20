@@ -5,6 +5,7 @@ import numpy as np
 import hashlib
 import os
 import openai
+print(openai.__version__)
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import normalize
 import requests

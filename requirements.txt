@@ -6,3 +6,4 @@ scikit-learn
 beautifulsoup4
 requests
 xlsxwriter
+openpyxl

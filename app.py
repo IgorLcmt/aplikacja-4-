@@ -80,7 +80,7 @@ def scrape_website(url):
 query_input = st.sidebar.text_area("🎨 Paste company profile here:", height=200)
 
 # === Main logic ===
-if api_key and query_input:
+if api_key and query_input and st.session_state.get("generate_new", True):
     # 🛡 Safety check
     if "embed_text_batch" not in globals():
         st.error("❌ Embedding function is not defined.")
@@ -105,17 +105,34 @@ if api_key and query_input:
         for url in df_top20["Web page"]:
             scraped_texts.append(scrape_website(url))
 
-   
+    # Step 1: Load previously selected matches (initialize if not present)
+    if "previous_matches" not in st.session_state:
+        st.session_state.previous_matches = set()
+
+    # Step 2: Get final top 20 after re-ranking
     with st.spinner("Re-ranking after scraping..."):
         full_texts = [desc + "\n" + web for desc, web in zip(df_top20["Business Description"], scraped_texts)]
         embeds = embed_text_batch(full_texts + [query_input], api_key)
         final_embeds = np.array(embeds[:-1])
         final_query = np.array(embeds[-1]).reshape(1, -1)
         final_scores = cosine_similarity(final_embeds, final_query).flatten()
-        df_top20["Score"] = final_scores
-        df_final = df_top20.sort_values("Score", ascending=False).head(10)
-        st.session_state.results = df_final
 
+    df_top20["Score"] = final_scores
+
+    # Step 3: Filter out previously shown matches
+    df_top20["ID"] = df_top20["MI Transaction ID"].astype(str)  # or another unique field
+    df_filtered = df_top20[~df_top20["ID"].isin(st.session_state.previous_matches)]
+
+    # Step 4: Select 10 new matches
+    df_final = df_filtered.sort_values("Score", ascending=False).head(10)
+
+    # Step 5: Update session with selected IDs to avoid duplicates
+    st.session_state.previous_matches.update(df_final["ID"].tolist())
+    st.session_state.results = df_final
+
+    # ✅ Reset flag after matches are generated
+    st.session_state.generate_new = False
+    
     st.success("🚀 Top 10 Matches Ready")
     st.dataframe(df_final, use_container_width=True)
 
@@ -124,7 +141,19 @@ if api_key and query_input:
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_final.to_excel(writer, index=False, sheet_name="Top Matches")
  
-    st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Top_Matches.xlsx")
+    # Layout: Download + Generate New Matches buttons side by side
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.download_button(
+            "⬇️ Download Excel",
+            data=output.getvalue(),
+            file_name="Top_Matches.xlsx"
+        )
+
+    with col2:
+        if st.button("🔄 Generate 10 New Matches"):
+            st.session_state.generate_new = True  # Use this flag to rerun the match logic
 
 elif not query_input:
-    st.info("👉 Enter your OpenAI API key and a company profile to begin.")
+    st.info("👉 Enter a company profile to begin.")

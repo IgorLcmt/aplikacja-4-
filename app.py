@@ -89,7 +89,7 @@ if api_key and query_input and st.session_state.get("generate_new", True):
         
     with st.spinner("Embedding and finding initial matches..."):
         df = load_database()
-        descriptions = df["Business Description"].dropna().astype(str).tolist(
+        descriptions = df["Business Description"].dropna().astype(str).tolist()
         embeds = embed_text_batch(list(descriptions) + [query_input], api_key)
         db_embeds = np.array(embeds[:-1])
         query_embed = np.array(embeds[-1]).reshape(1, -1)

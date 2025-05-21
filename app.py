@@ -37,8 +37,9 @@ def load_database():
     df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
     df.columns = [col.strip() for col in df.columns]
     df = df.rename(columns={
-        'Business Description\n(Target/Issuer)': 'Business Description',
-        'Primary Industry\n(Target/Issuer)': 'Primary Industry'
+    'Business Description\n(Target/Issuer)': 'Business Description',
+    'Primary Industry\n(Target/Issuer)': 'Primary Industry',
+    'Company Geography\n(Target/Issuer)': 'Company Geography'
     })
     df = df.dropna(subset=[
         'Target/Issuer Name', 'MI Transaction ID', 'Implied Enterprise Value/ EBITDA (x)',

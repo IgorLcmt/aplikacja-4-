@@ -13,6 +13,7 @@ import time
 import joblib
 import pickle
 import io
+import tiktoken
 
 # === Streamlit Configuration ===
 st.set_page_config(page_title="CMT analiza mnożników pod wycene 🔍", layout="wide")

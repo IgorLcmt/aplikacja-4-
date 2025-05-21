@@ -123,7 +123,7 @@ if api_key and query_input:
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_final.to_excel(writer, index=False, sheet_name="Top Matches")
-        writer.save()
+ 
     st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Top_Matches.xlsx")
 
 elif not query_input:

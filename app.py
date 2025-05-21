@@ -154,7 +154,7 @@ if st.session_state.results is not None:
     with col2:
         if st.button("🔄 Generate 10 New Matches"):
             st.session_state.generate_new = True
-            st.experimental_rerun()  # Ensure immediate rerun
+            st.experimental_rerun()
 
 elif not query_input:
     st.info("👉 Enter a company profile to begin.")

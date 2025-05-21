@@ -89,7 +89,7 @@ if api_key and query_input:
     with st.spinner("Embedding and finding initial matches..."):
         df = load_database()
         descriptions = df["Business Description"].dropna().astype(str).tolist()
-       embeds = embed_text_batch(list(descriptions) + [query_input], api_key)
+        embeds = embed_text_batch(list(descriptions) + [query_input], api_key)
         db_embeds = np.array(embeds[:-1])
         query_embed = np.array(embeds[-1]).reshape(1, -1)
         scores = cosine_similarity(db_embeds, query_embed).flatten()

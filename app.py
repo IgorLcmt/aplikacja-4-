@@ -98,9 +98,14 @@ if api_key and query_input:
 
     with st.spinner("Scraping top 20 sites..."):
         scraped_texts = []
+
+        # 👉 Add this debug print here
+        st.write("Available columns:", df_top20.columns.tolist())
+
         for url in df_top20["Website URL"]:
             scraped_texts.append(scrape_website(url))
 
+   
     with st.spinner("Re-ranking after scraping..."):
         full_texts = [desc + "\n" + web for desc, web in zip(df_top20["Business Description"], scraped_texts)]
         embeds = embed_text(full_texts + [query_input], api_key)

@@ -46,28 +46,6 @@ def load_database():
         'Business Description', 'Primary Industry'])
     return df
     
-# Load the database
-df = load_database()
-    
-# 2. Sidebar filters
-industry_options = df["Primary Industry"].dropna().unique().tolist()
-geo_options = df["Company Geography"].dropna().unique().tolist()
-
-selected_industry = st.sidebar.selectbox("🧭 Select Industry", options=industry_options)
-selected_region = st.sidebar.selectbox("🌍 Select Region", options=geo_options)
-ev_range = st.sidebar.slider("💰 Enterprise Value/EBITDA range", min_value=0.0, max_value=40.0, value=(4.0, 15.0))
-
-# 3. Apply filters
-df_filtered = df[
-    (df["Primary Industry"] == selected_industry) &
-    (df["Company Geography (Target/Issuer)"] == selected_region) &
-    (pd.to_numeric(df["Implied Enterprise Value/ EBITDA (x)"], errors="coerce").between(ev_range[0], ev_range[1]))
-].dropna(subset=["Business Description"])
-
-if df_filtered.empty:
-    st.warning("⚠️ No companies match your filters. Try adjusting them.")
-    st.stop()
-    
 # === Embed text via OpenAI ===
 from openai import OpenAI
 import tiktoken
@@ -111,7 +89,7 @@ if api_key and query_input and st.session_state.get("generate_new", True):
         
     with st.spinner("Embedding and finding initial matches..."):
         df = load_database()
-        descriptions = df_filtered["Business Description"].astype(str).tolist()
+        descriptions = df["Business Description"].dropna().astype(str).tolist(
         embeds = embed_text_batch(list(descriptions) + [query_input], api_key)
         db_embeds = np.array(embeds[:-1])
         query_embed = np.array(embeds[-1]).reshape(1, -1)

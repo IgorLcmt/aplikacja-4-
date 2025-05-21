@@ -45,6 +45,9 @@ def load_database():
         'Business Description', 'Primary Industry'])
     return df
     
+# Load the database
+df = load_database()
+    
 # 2. Sidebar filters
 industry_options = df["Primary Industry"].dropna().unique().tolist()
 geo_options = df["Company Geography (Target/Issuer)"].dropna().unique().tolist()

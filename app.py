@@ -81,6 +81,11 @@ query_input = st.sidebar.text_area("🎨 Paste company profile here:", height=20
 
 # === Main logic ===
 if api_key and query_input:
+    # 🛡 Safety check
+    if "embed_text_batch" not in globals():
+        st.error("❌ Embedding function is not defined.")
+        st.stop()
+        
     with st.spinner("Embedding and finding initial matches..."):
         df = load_database()
         descriptions = df["Business Description"].dropna().astype(str).tolist()

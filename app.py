@@ -141,19 +141,23 @@ if api_key and query_input and st.session_state.get("generate_new", True):
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_final.to_excel(writer, index=False, sheet_name="Top Matches")
  
-    # Layout: Download + Generate New Matches buttons side by side
-    col1, col2 = st.columns([1, 1])
+    # Show buttons only if results exist
+if st.session_state.results is not None:
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        st.session_state.results.to_excel(writer, index=False, sheet_name="Top Matches")
 
+    col1, col2 = st.columns([1, 1])
     with col1:
         st.download_button(
             "⬇️ Download Excel",
             data=output.getvalue(),
             file_name="Top_Matches.xlsx"
         )
-
     with col2:
         if st.button("🔄 Generate 10 New Matches"):
-            st.session_state.generate_new = True  # Use this flag to rerun the match logic
+            st.session_state.generate_new = True
+            st.experimental_rerun()  # Ensure immediate rerun
 
 elif not query_input:
     st.info("👉 Enter a company profile to begin.")

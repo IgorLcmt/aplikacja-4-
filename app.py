@@ -99,9 +99,6 @@ if api_key and query_input and st.session_state.get("generate_new", True):
     with st.spinner("Scraping top 20 sites..."):
         scraped_texts = []
 
-        # 👉 Add this debug print here
-        st.write("Available columns:", df_top20.columns.tolist())
-
         for url in df_top20["Web page"]:
             scraped_texts.append(scrape_website(url))
 

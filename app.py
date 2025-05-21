@@ -55,7 +55,7 @@ def embed_text(texts, api_key):
 
     # 🐞 Debug print: Check input before calling API
     print("Embedding input:", texts)
-
+    
     response = client.embeddings.create(
         input=texts,
         model="text-embedding-ada-002"

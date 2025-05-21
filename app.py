@@ -108,7 +108,7 @@ if api_key and query_input:
    
     with st.spinner("Re-ranking after scraping..."):
         full_texts = [desc + "\n" + web for desc, web in zip(df_top20["Business Description"], scraped_texts)]
-        embeds = embed_text(full_texts + [query_input], api_key)
+        embeds = embed_text_batch(full_texts + [query_input], api_key)
         final_embeds = np.array(embeds[:-1])
         final_query = np.array(embeds[-1]).reshape(1, -1)
         final_scores = cosine_similarity(final_embeds, final_query).flatten()

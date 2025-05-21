@@ -102,7 +102,7 @@ if api_key and query_input:
         # 👉 Add this debug print here
         st.write("Available columns:", df_top20.columns.tolist())
 
-        for url in df_top20["Website URL"]:
+        for url in df_top20["Web page"]:
             scraped_texts.append(scrape_website(url))
 
    

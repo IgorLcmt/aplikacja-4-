@@ -51,7 +51,7 @@ df = load_database()
     
 # 2. Sidebar filters
 industry_options = df["Primary Industry"].dropna().unique().tolist()
-geo_options = df["Company Geography (Target/Issuer)"].dropna().unique().tolist()
+geo_options = df["Company Geography"].dropna().unique().tolist()
 
 selected_industry = st.sidebar.selectbox("🧭 Select Industry", options=industry_options)
 selected_region = st.sidebar.selectbox("🌍 Select Region", options=geo_options)

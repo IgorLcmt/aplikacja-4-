@@ -46,22 +46,22 @@ def load_database():
 
 # === Embed text via OpenAI ===
 from openai import OpenAI
+import tiktoken
 
-def embed_text(texts, api_key):
-    if not texts or not isinstance(texts, list) or not all(isinstance(t, str) for t in texts):
-        raise ValueError("Input to embed_text must be a non-empty list of strings.")
-
+def embed_text_batch(texts, api_key, batch_size=100):
     client = OpenAI(api_key=api_key)
+    clean_texts = [t.strip()[:4000] for t in texts if isinstance(t, str) and t.strip()]
+    all_embeddings = []
 
-    # 🐞 Debug print: Check input before calling API
-    print("Embedding input:", texts)
-    
-    response = client.embeddings.create(
-        input=texts,
-        model="text-embedding-ada-002"
-    )
+    for i in range(0, len(clean_texts), batch_size):
+        batch = clean_texts[i:i + batch_size]
+        response = client.embeddings.create(
+            input=batch,
+            model="text-embedding-ada-002"
+        )
+        all_embeddings.extend([record.embedding for record in response.data])
 
-    return [record.embedding for record in response.data]
+    return all_embeddings
 # === Scrape web page ===
 def scrape_website(url):
     if url in st.session_state.scraped_cache:

@@ -46,14 +46,21 @@ def load_database():
 
 # === Embed text via OpenAI ===
 from openai import OpenAI
-print(openai.__version__)
 
 def embed_text(texts, api_key):
+    if not texts or not isinstance(texts, list) or not all(isinstance(t, str) for t in texts):
+        raise ValueError("Input to embed_text must be a non-empty list of strings.")
+
     client = OpenAI(api_key=api_key)
+
+    # 🐞 Debug print: Check input before calling API
+    print("Embedding input:", texts)
+
     response = client.embeddings.create(
         input=texts,
         model="text-embedding-ada-002"
     )
+
     return [record.embedding for record in response.data]
 # === Scrape web page ===
 def scrape_website(url):
@@ -76,7 +83,7 @@ if api_key and query_input:
     with st.spinner("Embedding and finding initial matches..."):
         df = load_database()
         descriptions = df["Business Description"].tolist()
-        embeds = embed_text(descriptions + [query_input], api_key)
+        embeds = embed_text(list(descriptions) + [query_input], api_key)
         db_embeds = np.array(embeds[:-1])
         query_embed = np.array(embeds[-1]).reshape(1, -1)
         scores = cosine_similarity(db_embeds, query_embed).flatten()

@@ -2,155 +2,188 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import hashlib
-import os
-import openai
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import normalize
 import requests
 from bs4 import BeautifulSoup
-import time
-import joblib
-import pickle
-import io
-import tiktoken
-
-# === Streamlit Configuration ===
-st.set_page_config(page_title="CMT analiza mnożników pod wycene 🔍", layout="wide")
-
-# === Load API Key ===
-api_key = st.secrets.get("openai", {}).get("api_key")
-if not api_key:
-    st.error("❌ OpenAI API key is missing. Please check your secrets configuration.")
-    st.stop()
-
-# === Initialize session state ===
-if "results" not in st.session_state:
-    st.session_state.results = None
-
-if "scraped_cache" not in st.session_state:
-    st.session_state.scraped_cache = {}
-
-# === Load database ===
-@st.cache_data
-def load_database(): 
-    df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-    df.columns = [col.strip() for col in df.columns]
-    df = df.dropna(subset=[
-        'Target/Issuer Name', 'MI Transaction ID', 'Implied Enterprise Value/ EBITDA (x)',
-        'Business Description', 'Primary Industry'])
-    return df
-    
-# === Embed text via OpenAI ===
 from openai import OpenAI
+from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor
 import tiktoken
+import io
+import re
+import time
 
-def embed_text_batch(texts, api_key, batch_size=100):
-    client = OpenAI(api_key=api_key)
-    clean_texts = [t.strip()[:4000] for t in texts if isinstance(t, str) and t.strip()]
-    all_embeddings = []
+# ===== CONSTANTS =====
+MAX_TEXT_LENGTH = 4000
+BATCH_SIZE = 100
+MAX_TOKENS = 8000
+RATE_LIMIT_DELAY = 1.0  # Seconds between scrapes
+SIMILARITY_THRESHOLD = 0.75
 
-    for i in range(0, len(clean_texts), batch_size):
-        batch = clean_texts[i:i + batch_size]
-        response = client.embeddings.create(
-            input=batch,
-            model="text-embedding-ada-002"
-        )
-        all_embeddings.extend([record.embedding for record in response.data])
+# ===== STREAMLIT CONFIG =====
+st.set_page_config(page_title="CMT Company Analyzer 🔍", layout="wide")
 
-    return all_embeddings
-# === Scrape web page ===
-def scrape_website(url):
-    if url in st.session_state.scraped_cache:
-        return st.session_state.scraped_cache[url]
+# ===== INITIALIZATION =====
+@st.cache_resource
+def init_openai(api_key: str) -> OpenAI:
+    return OpenAI(api_key=api_key)
+
+# ===== DATA LOADING =====
+@st.cache_data
+def load_database() -> pd.DataFrame:
     try:
-        response = requests.get(url, timeout=5)
-        soup = BeautifulSoup(response.text, "html.parser")
-        text = soup.get_text(separator=" ", strip=True)
-        st.session_state.scraped_cache[url] = text
-        return text
+        df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
+        df.columns = [col.strip() for col in df.columns]
+        required_cols = [
+            'Target/Issuer Name', 'MI Transaction ID', 
+            'Implied Enterprise Value/ EBITDA (x)', 'Business Description',
+            'Primary Industry', 'Web page'
+        ]
+        return df.dropna(subset=required_cols)
     except Exception as e:
+        st.error(f"Database loading failed: {str(e)}")
+        st.stop()
+
+# ===== EMBEDDING FUNCTIONS =====
+def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
+    encoding = tiktoken.get_encoding(encoding_name)
+    tokens = encoding.encode(text)[:MAX_TOKENS]
+    return encoding.decode(tokens)
+
+@st.cache_data
+def embed_text_batch(texts: List[str], client: OpenAI) -> List[List[float]]:
+    clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
+    embeddings = []
+    
+    try:
+        for i in range(0, len(clean_texts), BATCH_SIZE):
+            batch = clean_texts[i:i+BATCH_SIZE]
+            response = client.embeddings.create(
+                input=batch,
+                model="text-embedding-ada-002"
+            )
+            embeddings.extend([record.embedding for record in response.data])
+    except Exception as e:
+        st.error(f"Embedding failed: {str(e)}")
+        st.stop()
+    
+    return embeddings
+
+# ===== WEB SCRAPING =====
+def is_valid_url(url: str) -> bool:
+    return re.match(r'^https?://', url) is not None
+
+def scrape_website(url: str) -> str:
+    if not is_valid_url(url):
+        return ""
+    
+    try:
+        time.sleep(RATE_LIMIT_DELAY)  # Rate limiting
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        return soup.get_text(separator=" ", strip=True)[:MAX_TEXT_LENGTH]
+    except Exception:
         return ""
 
-# === Sidebar input ===
-query_input = st.sidebar.text_area("🎨 Paste company profile here:", height=200)
+# ===== CORE LOGIC =====
+def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
+    """Returns indices of scores above threshold, sorted descending"""
+    qualified = scores >= threshold
+    return np.argsort(-scores[qualified])
 
-# === Main logic ===
-if api_key and query_input and st.session_state.get("generate_new", True):
-    # 🛡 Safety check
-    if "embed_text_batch" not in globals():
-        st.error("❌ Embedding function is not defined.")
+# ===== UI & SESSION STATE =====
+def main():
+    # === Authentication ===
+    api_key = st.secrets.get("openai", {}).get("api_key")
+    if not api_key:
+        st.error("OpenAI API key missing")
         st.stop()
-        
-    with st.spinner("Embedding and finding initial matches..."):
-        df = load_database()
-        descriptions = df["Business Description"].dropna().astype(str).tolist()
-        embeds = embed_text_batch(list(descriptions) + [query_input], api_key)
-        db_embeds = np.array(embeds[:-1])
-        query_embed = np.array(embeds[-1]).reshape(1, -1)
-        scores = cosine_similarity(db_embeds, query_embed).flatten()
-        top20_idx = np.argsort(scores)[-20:][::-1]
-        df_top20 = df.iloc[top20_idx].copy()
-
-    with st.spinner("Scraping top 20 sites..."):
-        scraped_texts = []
-
-        for url in df_top20["Web page"]:
-            scraped_texts.append(scrape_website(url))
-
-    # Step 1: Load previously selected matches (initialize if not present)
-    if "previous_matches" not in st.session_state:
-        st.session_state.previous_matches = set()
-
-    # Step 2: Get final top 20 after re-ranking
-    with st.spinner("Re-ranking after scraping..."):
-        full_texts = [desc + "\n" + web for desc, web in zip(df_top20["Business Description"], scraped_texts)]
-        embeds = embed_text_batch(full_texts + [query_input], api_key)
-        final_embeds = np.array(embeds[:-1])
-        final_query = np.array(embeds[-1]).reshape(1, -1)
-        final_scores = cosine_similarity(final_embeds, final_query).flatten()
-
-    df_top20["Score"] = final_scores
-
-    # Step 3: Filter out previously shown matches
-    df_top20["ID"] = df_top20["MI Transaction ID"].astype(str)  # or another unique field
-    df_filtered = df_top20[~df_top20["ID"].isin(st.session_state.previous_matches)]
-
-    # Step 4: Select 10 new matches
-    df_final = df_filtered.sort_values("Score", ascending=False).head(10)
-
-    # Step 5: Update session with selected IDs to avoid duplicates
-    st.session_state.previous_matches.update(df_final["ID"].tolist())
-    st.session_state.results = df_final
-
-    # ✅ Reset flag after matches are generated
-    st.session_state.generate_new = False
     
-    st.success("🚀 Top 10 Matches Ready")
-    st.dataframe(df_final, use_container_width=True)
+    client = init_openai(api_key)
+    
+    # === Session State ===
+    session_defaults = {
+        "results": None,
+        "scraped_cache": {},
+        "previous_matches": set(),
+        "generate_new": True
+    }
+    for key, val in session_defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
 
-    # === Excel export ===
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df_final.to_excel(writer, index=False, sheet_name="Top Matches")
- 
-    # Show buttons only if results exist
-if st.session_state.results is not None:
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        st.session_state.results.to_excel(writer, index=False, sheet_name="Top Matches")
+    # === Sidebar Input ===
+    with st.sidebar:
+        query_input = st.text_area("📝 Paste company profile:", height=200)
+    
+    if not query_input:
+        st.info("Enter a company profile to begin")
+        return
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.download_button(
-            "⬇️ Download Excel",
-            data=output.getvalue(),
-            file_name="Top_Matches.xlsx"
-        )
-    with col2:
-        if st.button("🔄 Generate 10 New Matches"):
-            st.session_state.generate_new = True
-            st.rerun()
+    # === Processing Pipeline ===
+    if st.session_state.generate_new:
+        with st.spinner("Analyzing profile..."):
+            try:
+                # Load data
+                df = load_database()
+                descriptions = df["Business Description"].astype(str).tolist()
+                
+                # Initial embedding
+                embeds = embed_text_batch(descriptions + [query_input], client)
+                db_embeds = np.array(embeds[:-1])
+                query_embed = np.array(embeds[-1]).reshape(1, -1)
+                
+                # Similarity calculation
+                scores = cosine_similarity(db_embeds, query_embed).flatten()
+                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:20]
+                df_top20 = df.iloc[top_indices].copy()
 
-elif not query_input:
-    st.info("👉 Enter a company profile to begin.")
+                # Parallel scraping
+                with ThreadPoolExecutor() as executor:
+                    scraped_texts = list(executor.map(scrape_website, df_top20["Web page"]))
+                
+                # Re-ranking
+                full_texts = [f"{desc}\n{web}" for desc, web in 
+                            zip(df_top20["Business Description"], scraped_texts)]
+                final_embeds = np.array(embed_text_batch(full_texts + [query_input], client)[:-1])
+                final_scores = cosine_similarity(final_embeds, query_embed).flatten()
+                
+                # Final selection
+                df_top20["Score"] = final_scores
+                df_top20["ID"] = df_top20["MI Transaction ID"].astype(str)
+                df_filtered = df_top20[~df_top20["ID"].isin(st.session_state.previous_matches)]
+                df_final = df_filtered.nlargest(10, "Score")
+                
+                # Update session
+                st.session_state.previous_matches.update(df_final["ID"].tolist())
+                st.session_state.results = df_final
+                st.session_state.generate_new = False
+                
+            except Exception as e:
+                st.error(f"Processing failed: {str(e)}")
+                st.stop()
+
+    # === Display Results ===
+    if st.session_state.results is not None:
+        st.success("Top 10 Matches Found")
+        st.dataframe(st.session_state.results, use_container_width=True)
+        
+        # Export controls
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            st.session_state.results.to_excel(writer, index=False)
+            
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                "⬇️ Download Excel",
+                data=output.getvalue(),
+                file_name="Company_Matches.xlsx"
+            )
+        with col2:
+            if st.button("🔄 Find New Matches"):
+                st.session_state.generate_new = True
+                st.rerun()
+
+if __name__ == "__main__":
+    main()

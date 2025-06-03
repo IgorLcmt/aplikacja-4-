@@ -51,7 +51,7 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     return encoding.decode(tokens)
 
 @st.cache_data
-def embed_text_batch(texts: List[str], client: OpenAI) -> List[List[float]]:
+def embed_text_batch(texts: List[str],_client: OpenAI) -> List[List[float]]:
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
     embeddings = []
     

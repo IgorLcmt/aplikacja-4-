@@ -213,9 +213,7 @@ def main():
             "ID",
             "Explanation"  # GPT-generated
         ]
-
         available_columns = [col for col in expected_columns if col in st.session_state.results.columns]
-
         st.dataframe(st.session_state.results[available_columns], use_container_width=True)
 
         output = io.BytesIO()

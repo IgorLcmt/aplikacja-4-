@@ -200,18 +200,19 @@ def main():
                 st.error(f"Processing failed: {str(e)}")
                 st.stop()
 
-    if st.dataframe(st.session_state.results[[
-        "Target/Issuer Name",
-        "MI Transaction ID",
-        "Implied Enterprise Value/ EBITDA (x)",
-        "Company Geography (Target/Issuer)",  # If this column exists
-        "Business Description",
-        "Primary Industry",
-        "Web page",
-        "Score",
-        "ID",
-        "Explanation"  # GPT-generated
-    ]], use_container_width=True)
+    if st.session_state.results is not None:
+        st.dataframe(st.session_state.results[[
+            "Target/Issuer Name",
+            "MI Transaction ID",
+            "Implied Enterprise Value/ EBITDA (x)",
+            "Company Geography (Target/Issuer)",  # If this column exists
+            "Business Description",
+            "Primary Industry",
+            "Web page",
+            "Score",
+            "ID",
+            "Explanation"  # GPT-generated
+        ]], use_container_width=True)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:

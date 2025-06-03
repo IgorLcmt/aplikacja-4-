@@ -101,7 +101,7 @@ def main():
         st.error("OpenAI API key missing")
         st.stop()
     
-       client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key)
     
     # === Session State ===
     session_defaults = {

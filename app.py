@@ -105,6 +105,14 @@ def classify_industry(description: str, client: OpenAI) -> str:
         description,
         client
     )
+
+def detect_industry_from_text(text: str, client: OpenAI) -> str:
+    return gpt_chat(
+        "Based on the following text, identify the company's primary industry. Respond with one broad label like Advertising, Healthcare, Manufacturing, IT, etc.",
+        text,
+        client
+    )
+    
 # ===== WEB SCRAPING =====
 def is_valid_url(url: str) -> bool:
     return re.match(r'^https?://', url) is not None

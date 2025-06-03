@@ -98,7 +98,13 @@ def generate_tags(description: str, client: OpenAI) -> str:
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
     return [line.strip("-• ") for line in response.splitlines() if line.strip()]
-
+    
+def classify_industry(description: str, client: OpenAI) -> str:
+    return gpt_chat(
+        "Classify the following company description into one primary industry (e.g. Advertising, Healthcare, Cybersecurity, etc.):",
+        description,
+        client
+    )
 # ===== WEB SCRAPING =====
 def is_valid_url(url: str) -> bool:
     return re.match(r'^https?://', url) is not None
@@ -158,7 +164,14 @@ def main():
         with st.spinner("Analyzing profile..."):
             try:
                 df = load_database()
-                descriptions = df["Business Description"].astype(str).tolist()
+                detected_industry = detect_industry_from_text(query_text, client)
+                st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry}")
+
+                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
+                
+                if df.empty:
+                    st.warning("No companies found in the detected industry. Showing all.")
+                    df = load_database()
                 query_variants = [query_text] + paraphrase_query(query_text, client)
                 embeds = embed_text_batch(descriptions + query_variants, client)
                 db_embeds = np.array(embeds[:len(descriptions)])

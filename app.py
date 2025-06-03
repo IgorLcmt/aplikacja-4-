@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Optional
+from typing import List
 from concurrent.futures import ThreadPoolExecutor
 import tiktoken
 import io
@@ -16,7 +16,7 @@ import time
 MAX_TEXT_LENGTH = 4000
 BATCH_SIZE = 100
 MAX_TOKENS = 8000
-RATE_LIMIT_DELAY = 1.0  # Seconds between scrapes
+RATE_LIMIT_DELAY = 1.0
 SIMILARITY_THRESHOLD = 0.75
 
 # ===== STREAMLIT CONFIG =====
@@ -53,7 +53,6 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
 def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
     embeddings = []
-    
     try:
         for i in range(0, len(clean_texts), BATCH_SIZE):
             batch = clean_texts[i:i+BATCH_SIZE]
@@ -65,7 +64,6 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     except Exception as e:
         st.error(f"Embedding failed: {str(e)}")
         st.stop()
-    
     return embeddings
 
 # ===== GPT UTILITIES =====
@@ -88,9 +86,11 @@ def summarize_website(text: str, client: OpenAI) -> str:
     return gpt_chat("Summarize this web content in 3-5 concise bullet points.", text, client)
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
-    return gpt_chat("You are a business analyst.",
-                    f"Explain in 3-5 bullet points how this company matches the provided query.\\n\\nQuery:\\n{query}\\n\\nCompany:\\n{company_desc}",
-                    client)
+    return gpt_chat(
+        "You are a business analyst.",
+        f"Explain in 3-5 bullet points how this company matches the provided query.\n\nQuery:\n{query}\n\nCompany:\n{company_desc}",
+        client
+    )
 
 def generate_tags(description: str, client: OpenAI) -> str:
     return gpt_chat("Extract 3-5 high-level tags or categories from the business description.", description, client)
@@ -106,7 +106,6 @@ def is_valid_url(url: str) -> bool:
 def scrape_website(url: str) -> str:
     if not is_valid_url(url):
         return ""
-    
     try:
         time.sleep(RATE_LIMIT_DELAY)
         response = requests.get(url, timeout=10)
@@ -126,7 +125,6 @@ def main():
     if not api_key:
         st.error("OpenAI API key missing")
         st.stop()
-    
     client = OpenAI(api_key=api_key)
 
     session_defaults = {
@@ -151,7 +149,7 @@ def main():
         else:
             st.error("Please enter a valid website URL (http/https).")
             return
-    
+
     if not query_input:
         st.info("Enter a company profile to begin")
         return
@@ -161,8 +159,7 @@ def main():
             try:
                 df = load_database()
                 descriptions = df["Business Description"].astype(str).tolist()
-                
-                query_variants = [query_input] + paraphrase_query(query_input, client)
+                query_variants = [query_text] + paraphrase_query(query_text, client)
                 embeds = embed_text_batch(descriptions + query_variants, client)
                 db_embeds = np.array(embeds[:len(descriptions)])
                 query_embeds = np.array(embeds[len(descriptions):])
@@ -174,17 +171,17 @@ def main():
 
                 with ThreadPoolExecutor() as executor:
                     scraped_texts = list(executor.map(scrape_website, df_top20["Web page"]))
-                
+
                 summaries = [summarize_website(text, client) for text in scraped_texts]
-                explanations = [explain_match(query_input, desc, client) for desc in df_top20["Business Description"]]
+                explanations = [explain_match(query_text, desc, client) for desc in df_top20["Business Description"]]
                 tags = [generate_tags(desc, client) for desc in df_top20["Business Description"]]
 
                 df_top20["Summary"] = summaries
                 df_top20["Explanation"] = explanations
                 df_top20["Tags"] = tags
 
-                full_texts = [f"{desc}\\n{text}" for desc, text in zip(df_top20["Business Description"], scraped_texts)]
-                final_embeds = np.array(embed_text_batch(full_texts + [query_input], client)[:-1])
+                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top20["Business Description"], scraped_texts)]
+                final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
                 final_scores = cosine_similarity(final_embeds, query_embed).flatten()
 
                 df_top20["Score"] = final_scores
@@ -201,17 +198,17 @@ def main():
                 st.stop()
 
     if st.session_state.results is not None:
-        st.dataframe(st.session_state.results[[
+        expected_columns = [
             "Target/Issuer Name",
             "MI Transaction ID",
             "Implied Enterprise Value/ EBITDA (x)",
-            "Company Geography (Target/Issuer)",  # If this column exists
+            "Company Geography (Target/Issuer)",
             "Business Description",
             "Primary Industry",
             "Web page",
             "Score",
             "ID",
-            "Explanation"  # GPT-generated
+            "Explanation"
         ]
         available_columns = [col for col in expected_columns if col in st.session_state.results.columns]
         st.dataframe(st.session_state.results[available_columns], use_container_width=True)
@@ -219,7 +216,7 @@ def main():
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
             st.session_state.results.to_excel(writer, index=False)
-        
+
         col1, col2 = st.columns(2)
         with col1:
             st.download_button(
@@ -234,4 +231,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

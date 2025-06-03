@@ -211,7 +211,7 @@ def main():
                 df_top20["Score"] = final_scores
                 df_top20["ID"] = df_top20["MI Transaction ID"].astype(str)
                 df_filtered = df_top20[~df_top20["ID"].isin(st.session_state.previous_matches)]
-                df_final = df_filtered.nlargest(10, "Score")
+                df_final = df_filtered.nlargest(15, "Score")
 
                 st.session_state.previous_matches.update(df_final["ID"].tolist())
                 st.session_state.results = df_final

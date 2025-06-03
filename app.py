@@ -52,15 +52,13 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
 
 @st.cache_data
 def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
-     # client is used but not passed or defined here
-    response = client.embeddings.create(...)
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
-    embeddings = embed_text_batch(texts, client)
+    embeddings = []
     
     try:
         for i in range(0, len(clean_texts), BATCH_SIZE):
             batch = clean_texts[i:i+BATCH_SIZE]
-            response = client.embeddings.create(
+            response = _client.embeddings.create(
                 input=batch,
                 model="text-embedding-ada-002"
             )

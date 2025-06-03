@@ -212,7 +212,11 @@ def main():
             "Score",
             "ID",
             "Explanation"  # GPT-generated
-        ]], use_container_width=True)
+        ]
+
+        available_columns = [col for col in expected_columns if col in st.session_state.results.columns]
+
+        st.dataframe(st.session_state.results[available_columns], use_container_width=True)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:

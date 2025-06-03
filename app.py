@@ -51,9 +51,11 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     return encoding.decode(tokens)
 
 @st.cache_data
-def embed_text_batch(texts: List[str],_client: OpenAI) -> List[List[float]]:
+def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
+     # client is used but not passed or defined here
+    response = client.embeddings.create(...)
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
-    embeddings = []
+    embeddings = embed_text_batch(texts, client)
     
     try:
         for i in range(0, len(clean_texts), BATCH_SIZE):
@@ -94,12 +96,12 @@ def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
 # ===== UI & SESSION STATE =====
 def main():
     # === Authentication ===
-    api_key = st.secrets.get("openai", {}).get("api_key")
+    api_key = st.secrets["openai"]["api_key"]
     if not api_key:
         st.error("OpenAI API key missing")
         st.stop()
     
-    client = init_openai(api_key)
+       client = OpenAI(api_key=api_key)
     
     # === Session State ===
     session_defaults = {

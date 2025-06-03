@@ -181,6 +181,7 @@ def main():
                     st.warning("No companies found in the detected industry. Showing all.")
                     df = load_database()
                     
+                # ✅ Always compute descriptions from final df
                 descriptions = df["Business Description"].astype(str).tolist()
                 query_variants = [query_text] + paraphrase_query(query_text, client)
                 embeds = embed_text_batch(descriptions + query_variants, client)

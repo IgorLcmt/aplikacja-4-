@@ -140,7 +140,17 @@ def main():
             st.session_state[key] = val
 
     with st.sidebar:
-        query_input = st.text_area("📝 Paste company profile:", height=200)
+        query_input = st.text_input("🌐 Paste company website URL:")
+
+        if is_valid_url(query_input):
+            with st.spinner("Scraping website..."):
+                query_text = scrape_website(query_input)
+                if not query_text:
+                    st.error("Website content could not be scraped.")
+                    return
+        else:
+            st.error("Please enter a valid website URL (http/https).")
+            return
     
     if not query_input:
         st.info("Enter a company profile to begin")
@@ -190,12 +200,18 @@ def main():
                 st.error(f"Processing failed: {str(e)}")
                 st.stop()
 
-    if st.session_state.results is not None:
-        st.success("Top 10 Matches Found")
-        st.dataframe(st.session_state.results[[
-            "Target/Issuer Name", "Primary Industry", "Score",
-            "Summary", "Explanation", "Tags"
-        ]], use_container_width=True)
+    if st.dataframe(st.session_state.results[[
+        "Target/Issuer Name",
+        "MI Transaction ID",
+        "Implied Enterprise Value/ EBITDA (x)",
+        "Company Geography (Target/Issuer)",  # If this column exists
+        "Business Description",
+        "Primary Industry",
+        "Web page",
+        "Score",
+        "ID",
+        "Explanation"  # GPT-generated
+    ]], use_container_width=True)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:

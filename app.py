@@ -246,22 +246,22 @@ def main():
                 query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
 
                 scores = cosine_similarity(db_embeds, query_embed).flatten()
-                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:50]
-                df_top50 = df.iloc[top_indices].copy()
+                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:40]
+                df_top40 = df.iloc[top_indices].copy()
 
                 with ThreadPoolExecutor() as executor:
-                    scraped_texts = list(executor.map(scrape_website, df_top50["Web page"]))
+                    scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
 
-                df_top50["Summary"] = [summarize_website(text, client) for text in scraped_texts]
-                df_top50["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top50["Business Description"]]
-                df_top50["Tags"] = [generate_tags(desc, client) for desc in df_top50["Business Description"]]
+                df_top40["Summary"] = [summarize_website(text, client) for text in scraped_texts]
+                df_top40["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top40["Business Description"]]
+                df_top40["Tags"] = [generate_tags(desc, client) for desc in df_top40["Business Description"]]
 
-                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top50["Business Description"], scraped_texts)]
+                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top40["Business Description"], scraped_texts)]
                 final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
                 final_scores = cosine_similarity(final_embeds, query_embed).flatten()
 
                 df_top40["Score"] = final_scores
-                df_top40["ID"] = df_top50["MI Transaction ID"].astype(str)
+                df_top40["ID"] = df_top40["MI Transaction ID"].astype(str)
                 df_filtered = df_top50[~df_top50["ID"].isin(st.session_state.previous_matches)]
                 df_final = df_filtered.nlargest(25, "Score")
 

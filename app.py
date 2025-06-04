@@ -28,17 +28,20 @@ def init_openai(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 # ===== DATA LOADING =====
-@st.cache_data
+@st.cache_data(show_spinner="Loading database...")
 def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
+        
+        # Normalize column names
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
 
-        if "Total Enterprise Value (mln$)" in df.columns:
-            df["Total Enterprise Value (mln$)"] = pd.to_numeric(
-                df["Total Enterprise Value (mln$)"], errors="coerce"
-            )
+        # Convert value column to numeric only if it exists
+        val_col = "Total Enterprise Value (mln$)"
+        if val_col in df.columns:
+            df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
 
+        # Required columns (cleaned of trailing spaces)
         required_cols = [
             'Target/Issuer Name', 'MI Transaction ID',
             'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
@@ -46,9 +49,12 @@ def load_database() -> pd.DataFrame:
             'Business Description', 'Primary Industry', 'Web page'
         ]
 
-        actual = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
-        required = [col.strip().lower() for col in required_cols]
-        missing_required = [col for col in required if col not in actual]
+        # Normalize actual column names for comparison
+        actual_cols = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
+        required_check = [col.strip().lower() for col in required_cols]
+
+        # Check missing
+        missing_required = [col for col in required_check if col not in actual_cols]
         if missing_required:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()

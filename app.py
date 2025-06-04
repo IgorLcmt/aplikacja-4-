@@ -89,9 +89,8 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     return embeddings
     
 @st.cache_data(show_spinner="Embedding database (cached)...")
-def get_cached_db_embeddings(descriptions: List[str], client: OpenAI) -> np.ndarray:
-    return np.array(embed_text_batch(descriptions, client))
-
+def get_cached_db_embeddings(descriptions: List[str], _client: OpenAI) -> np.ndarray:
+    return np.array(embed_text_batch(descriptions, _client))
 # ===== GPT FUNCTIONS =====
 def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     try:

@@ -155,6 +155,13 @@ def main():
         query_input = st.text_input("🌐 Paste company website URL:")
         manual_description = st.text_area("📝 Or provide a company description manually (optional):")
 
+         # Trigger button
+         start_search = st.button("🔍 Find Matches")
+
+    if not start_search:
+        st.info("Enter details and click **Find Matches** to start.")
+        return
+
         query_text = ""
 
         if query_input and is_valid_url(query_input):

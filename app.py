@@ -152,34 +152,32 @@ def main():
             st.session_state[key] = val
 
     with st.sidebar:
-    query_input = st.text_input("🌐 Paste company website URL (optional):")
-    manual_description = st.text_area("📝 Or provide a company description manually (optional):")
-    start_search = st.button("🔍 Find Matches")
+        query_input = st.text_input("🌐 Paste company website URL (optional):")
+        manual_description = st.text_area("📝 Or provide a company description manually (optional):")
+        start_search = st.button("🔍 Find Matches")
 
-# Prevent any further execution until button is clicked
-if not start_search:
-    st.info("Enter a company website and/or description, then click **Find Matches** to start.")
-    return
+    # 🧱 Safeguard: if button wasn't clicked, don't process
+    if not start_search and st.session_state.get("generate_new", True):
+        st.info("Enter a company website and/or description, then click **Find Matches** to start.")
+        return
 
-# ✅ Always initialize query_text safely
-query_text = ""
+    # ✅ Initialize query_text early
+    query_text = ""
 
-# Scrape from website if URL is provided
-if query_input and is_valid_url(query_input):
-    with st.spinner("Scraping website..."):
-        query_text = scrape_website(query_input)
-        if not query_text:
-            st.warning("Website content could not be scraped.")
+    # Process inputs only after UI is built
+    if start_search or st.session_state.get("generate_new", False):
+        if query_input and is_valid_url(query_input):
+            with st.spinner("Scraping website..."):
+                query_text = scrape_website(query_input)
+                if not query_text:
+                    st.warning("Website content could not be scraped.")
 
-# Add manual description if present
-if manual_description:
-    # Prepend manual input for context priority
-    query_text = manual_description.strip() + "\n" + query_text
+    if manual_description:
+        query_text = manual_description.strip() + "\n" + query_text
 
-# Validate final input
-if not query_text.strip():
-    st.info("Please enter a valid website or a company description to proceed.")
-    return
+    if not query_text.strip():
+        st.info("Please enter a valid website or a company description to proceed.")
+        return
     
     if st.session_state.generate_new:
         with st.spinner("Analyzing profile..."):
@@ -264,6 +262,8 @@ if not query_text.strip():
         with col2:
             if st.button("🔄 Find New Matches"):
                 st.session_state.generate_new = True
+                st.session_state.query_input = ""  # optional cleanup
+                st.session_state.manual_description = ""  # optional cleanup
                 st.rerun()
 
 if __name__ == "__main__":

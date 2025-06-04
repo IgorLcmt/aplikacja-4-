@@ -36,7 +36,7 @@ def load_database() -> pd.DataFrame:
 
         required_cols = [
             'Target/Issuer Name', 'MI Transaction ID',
-            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)', 'Business Description',
+            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)', 'Company Geography (Target/Issuer)', 'Business Description',
             'Primary Industry', 'Web page'
         ]
 

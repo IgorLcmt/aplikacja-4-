@@ -36,21 +36,20 @@ def load_database() -> pd.DataFrame:
         st.write("Loaded columns from Excel:", df.columns.tolist())
 
         required_cols = [
-              'Target/Issuer Name', 'MI Transaction ID',
-              'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
-              'Company Geography (Target/Issuer)', 'Business Description',
-              'Primary Industry', 'Web page'
-            ]
+            'Target/Issuer Name', 'MI Transaction ID',
+            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
+            'Company Geography (Target/Issuer)', 'Business Description',
+            'Primary Industry', 'Web page'
+        ]
 
-        # Check required columns
         actual = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
         required = [col.strip().lower() for col in required_cols]
-
         missing_required = [col for col in required if col not in actual]
         if missing_required:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()
 
+        return df
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
@@ -67,18 +66,15 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     embeddings = []
     try:
         for i in range(0, len(clean_texts), BATCH_SIZE):
-            batch = clean_texts[i:i+BATCH_SIZE]
-            response = _client.embeddings.create(
-                input=batch,
-                model="text-embedding-ada-002"
-            )
+            batch = clean_texts[i:i + BATCH_SIZE]
+            response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
             embeddings.extend([record.embedding for record in response.data])
     except Exception as e:
         st.error(f"Embedding failed: {str(e)}")
         st.stop()
     return embeddings
 
-# ===== GPT UTILITIES =====
+# ===== GPT FUNCTIONS =====
 def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     try:
         response = client.chat.completions.create(
@@ -89,7 +85,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
             ],
             temperature=0.7
         )
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip() if response and response.choices else ""
     except Exception as e:
         st.warning(f"GPT call failed: {str(e)}")
         return ""
@@ -98,8 +94,7 @@ def summarize_website(text: str, client: OpenAI) -> str:
     return gpt_chat("Summarize this web content in 3-5 concise bullet points.", text, client)
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
-    return gpt_chat(
-        "You are a business analyst.",
+    return gpt_chat("You are a business analyst.",
         f"Explain in 3-5 bullet points how this company matches the provided query.\n\nQuery:\n{query}\n\nCompany:\n{company_desc}",
         client
     )
@@ -110,22 +105,14 @@ def generate_tags(description: str, client: OpenAI) -> str:
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
     return [line.strip("-• ") for line in response.splitlines() if line.strip()]
-    
-def classify_industry(description: str, client: OpenAI) -> str:
-    return gpt_chat(
-        "Classify the following company description into one primary industry (e.g. Advertising, Healthcare, Cybersecurity, etc.):",
-        description,
-        client
-    )
 
 def detect_industry_from_text(text: str, client: OpenAI) -> str:
     return gpt_chat(
         "Based on the following text, identify the company's primary industry. Respond with one broad label like Advertising, Healthcare, Manufacturing, IT, etc.",
-        text,
-        client
+        text, client
     )
-    
-# ===== WEB SCRAPING =====
+
+# ===== SCRAPING =====
 def is_valid_url(url: str) -> bool:
     return re.match(r'^https?://', url) is not None
 
@@ -140,14 +127,14 @@ def scrape_website(url: str) -> str:
     except Exception:
         return ""
 
-# ===== CORE LOGIC =====
+# ===== UTILS =====
 def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
     qualified = scores >= threshold
     return np.argsort(-scores[qualified])
 
-# ===== UI & SESSION STATE =====
+# ===== MAIN APP =====
 def main():
-    api_key = st.secrets["openai"]["api_key"]
+    api_key = st.secrets.get("openai", {}).get("api_key")
     if not api_key:
         st.error("OpenAI API key missing")
         st.stop()
@@ -171,15 +158,12 @@ def main():
         max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
         start_search = st.button("🔍 Find Matches")
 
-    # 🧱 Safeguard: if button wasn't clicked, don't process
     if not start_search and st.session_state.get("generate_new", True):
         st.info("Enter a company website and/or description, then click **Find Matches** to start.")
         return
 
-    # ✅ Initialize query_text early
     query_text = ""
 
-    # Process inputs only after UI is built
     if start_search or st.session_state.get("generate_new", False):
         if query_input and is_valid_url(query_input):
             with st.spinner("Scraping website..."):
@@ -193,36 +177,46 @@ def main():
     if not query_text.strip():
         st.info("Please enter a valid website or a company description to proceed.")
         return
-    
+
     if st.session_state.generate_new:
         with st.spinner("Analyzing profile..."):
             try:
                 df = load_database()
                 detected_industry = detect_industry_from_text(query_text, client)
                 if not detected_industry:
-                    st.warning("Could not detect industry from the input. Showing all companies.")
-                    detected_industry = ""
-                
-                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
-                st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry}")
+                    st.warning("Could not detect industry. Showing all companies.")
+                else:
+                    df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
 
-                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
-                # ✅ NEW: Filter by enterprise value
+                st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry or 'Not detected'}")
+
                 df = df[
                     (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                     (df["Total Enterprise Value (mln$)"].fillna(float('inf')) <= max_value)
                 ]
-                
+
                 if df.empty:
-                    st.warning("No companies found in the detected industry. Showing all.")
+                    st.warning("No companies match filters. Showing full list.")
                     df = load_database()
-                    
-                # ✅ Always compute descriptions from final df
+
                 descriptions = df["Business Description"].astype(str).tolist()
                 query_variants = [query_text] + paraphrase_query(query_text, client)
+
+                if not query_variants:
+                    st.error("Failed to generate query variants.")
+                    st.stop()
+
                 embeds = embed_text_batch(descriptions + query_variants, client)
+                if not embeds or len(embeds) < len(descriptions) + len(query_variants):
+                    st.error("Embedding failed or returned incomplete results.")
+                    st.stop()
+
                 db_embeds = np.array(embeds[:len(descriptions)])
                 query_embeds = np.array(embeds[len(descriptions):])
+                if query_embeds.size == 0:
+                    st.error("Query embedding is empty.")
+                    st.stop()
+
                 query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
 
                 scores = cosine_similarity(db_embeds, query_embed).flatten()
@@ -232,13 +226,9 @@ def main():
                 with ThreadPoolExecutor() as executor:
                     scraped_texts = list(executor.map(scrape_website, df_top20["Web page"]))
 
-                summaries = [summarize_website(text, client) for text in scraped_texts]
-                explanations = [explain_match(query_text, desc, client) for desc in df_top20["Business Description"]]
-                tags = [generate_tags(desc, client) for desc in df_top20["Business Description"]]
-
-                df_top20["Summary"] = summaries
-                df_top20["Explanation"] = explanations
-                df_top20["Tags"] = tags
+                df_top20["Summary"] = [summarize_website(text, client) for text in scraped_texts]
+                df_top20["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top20["Business Description"]]
+                df_top20["Tags"] = [generate_tags(desc, client) for desc in df_top20["Business Description"]]
 
                 full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top20["Business Description"], scraped_texts)]
                 final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
@@ -258,21 +248,7 @@ def main():
                 st.stop()
 
     if st.session_state.results is not None:
-        expected_columns = [
-            "Target/Issuer Name",
-            "MI Transaction ID",
-            "Implied Enterprise Value/ EBITDA (x)",
-            "Total Enterprise Value (mln$)",
-            "Company Geography (Target/Issuer)",
-            "Business Description",
-            "Primary Industry",
-            "Web page",
-            "Score",
-            "ID",
-            "Explanation"
-        ]
-        available_columns = [col for col in expected_columns if col in st.session_state.results.columns]
-        st.dataframe(st.session_state.results[available_columns], use_container_width=True)
+        st.dataframe(st.session_state.results, use_container_width=True)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -280,16 +256,10 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            st.download_button(
-                "⬇️ Download Excel",
-                data=output.getvalue(),
-                file_name="Company_Matches.xlsx"
-            )
+            st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Company_Matches.xlsx")
         with col2:
             if st.button("🔄 Find New Matches"):
                 st.session_state.generate_new = True
-                st.session_state.query_input = ""  # optional cleanup
-                st.session_state.manual_description = ""  # optional cleanup
                 st.rerun()
 
 if __name__ == "__main__":

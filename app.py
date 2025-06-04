@@ -117,7 +117,7 @@ def detect_industry_from_text(text: str, client: OpenAI) -> str:
 
 # ===== SCRAPING =====
 def is_valid_url(url: str) -> bool:
-    return re.match(r'^https?://', url) is not None
+    return isinstance(url, str) and re.match(r'^https?://', url) is not None
 
 def scrape_website(url: str) -> str:
     if not is_valid_url(url):

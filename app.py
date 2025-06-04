@@ -252,9 +252,7 @@ def main():
                 with ThreadPoolExecutor() as executor:
                     scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
 
-                df_top40["Summary"] = [summarize_website(text, client) for text in scraped_texts]
                 df_top40["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top40["Business Description"]]
-                df_top40["Tags"] = [generate_tags(desc, client) for desc in df_top40["Business Description"]]
 
                 full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top40["Business Description"], scraped_texts)]
                 final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])

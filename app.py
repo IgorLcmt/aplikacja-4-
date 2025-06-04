@@ -203,6 +203,11 @@ def main():
                 st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry}")
 
                 df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
+                # ✅ NEW: Filter by enterprise value
+                df = df[
+                    (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
+                    (df["Total Enterprise Value (mln$)"].fillna(float('inf')) <= max_value)
+                ]
                 
                 if df.empty:
                     st.warning("No companies found in the detected industry. Showing all.")
@@ -253,6 +258,7 @@ def main():
             "Target/Issuer Name",
             "MI Transaction ID",
             "Implied Enterprise Value/ EBITDA (x)",
+            "Total Enterprise Value (mln$)",
             "Company Geography (Target/Issuer)",
             "Business Description",
             "Primary Industry",

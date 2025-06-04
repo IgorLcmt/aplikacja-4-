@@ -97,8 +97,23 @@ def summarize_website(text: str, client: OpenAI) -> str:
     return gpt_chat("Summarize this web content in 3-5 concise bullet points.", text, client)
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
-    return gpt_chat("You are a business analyst.",
-        f"Explain in 3-5 bullet points how this company matches the provided query.\n\nQuery:\n{query}\n\nCompany:\n{company_desc}",
+    return gpt_chat(
+        "You are a business analyst evaluating company fit for strategic transactions.",
+        f"""
+Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
+
+Focus on the following criteria:
+1. Industry (e.g., technology, automotive, B2B services)
+2. Product or service type (e.g., SaaS, retail, components)
+3. Sales channels (e.g., online, traditional, omnichannel; B2B or B2C)
+4. Customer segments (e.g., automotive sector, financial sector, retail consumers)
+
+Query Profile:
+{query}
+
+Company Description:
+{company_desc}
+        """,
         client
     )
 
@@ -223,23 +238,23 @@ def main():
                 query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
 
                 scores = cosine_similarity(db_embeds, query_embed).flatten()
-                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:20]
-                df_top20 = df.iloc[top_indices].copy()
+                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:40]
+                df_top40 = df.iloc[top_indices].copy()
 
                 with ThreadPoolExecutor() as executor:
-                    scraped_texts = list(executor.map(scrape_website, df_top20["Web page"]))
+                    scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
 
-                df_top20["Summary"] = [summarize_website(text, client) for text in scraped_texts]
-                df_top20["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top20["Business Description"]]
-                df_top20["Tags"] = [generate_tags(desc, client) for desc in df_top20["Business Description"]]
+                df_top40["Summary"] = [summarize_website(text, client) for text in scraped_texts]
+                df_top40["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top40["Business Description"]]
+                df_top40["Tags"] = [generate_tags(desc, client) for desc in df_top40["Business Description"]]
 
-                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top20["Business Description"], scraped_texts)]
+                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top40["Business Description"], scraped_texts)]
                 final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
                 final_scores = cosine_similarity(final_embeds, query_embed).flatten()
 
-                df_top20["Score"] = final_scores
-                df_top20["ID"] = df_top20["MI Transaction ID"].astype(str)
-                df_filtered = df_top20[~df_top20["ID"].isin(st.session_state.previous_matches)]
+                df_top40["Score"] = final_scores
+                df_top40["ID"] = df_top40["MI Transaction ID"].astype(str)
+                df_filtered = df_top40[~df_top40["ID"].isin(st.session_state.previous_matches)]
                 df_final = df_filtered.nlargest(15, "Score")
 
                 st.session_state.previous_matches.update(df_final["ID"].tolist())

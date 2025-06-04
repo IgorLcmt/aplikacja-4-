@@ -258,16 +258,20 @@ def main():
                 with ThreadPoolExecutor() as executor:
                     scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
 
-                df_top40["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top40["Business Description"]]
-
+                with ThreadPoolExecutor() as executor:
+                    explanations = list(executor.map(
+                        lambda desc: explain_match(query_text, desc, client),
+                        df_top40["Business Description"]
+                    ))
+                df_top40["Explanation"] = explanations
                 full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top40["Business Description"], scraped_texts)]
                 final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
                 final_scores = cosine_similarity(final_embeds, query_embed).flatten()
 
                 df_top40["Score"] = final_scores
                 df_top40["ID"] = df_top40["MI Transaction ID"].astype(str)
-                df_filtered = df_top50[~df_top50["ID"].isin(st.session_state.previous_matches)]
-                df_final = df_filtered.nlargest(25, "Score")
+                df_filtered = df_top40[~df_top40["ID"].isin(st.session_state.previous_matches)]
+                df_final = df_filtered.nlargest(20, "Score")
 
                 st.session_state.previous_matches.update(df_final["ID"].tolist())
                 st.session_state.results = df_final

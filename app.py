@@ -36,7 +36,7 @@ def load_database() -> pd.DataFrame:
 
         required_cols = [
             'Target/Issuer Name', 'MI Transaction ID',
-            'Implied Enterprise Value/ EBITDA (x)', 'Business Description',
+            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)', 'Business Description',
             'Primary Industry', 'Web page'
         ]
 
@@ -45,12 +45,6 @@ def load_database() -> pd.DataFrame:
         if missing_required:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()
-
-        # Ensure the new column exists even if not populated yet
-        if 'Total Enterprise Value (mln$)' not in df.columns:
-            df['Total Enterprise Value (mln$)'] = None  # Placeholder for consistency
-
-        return df.dropna(subset=required_cols)
 
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")

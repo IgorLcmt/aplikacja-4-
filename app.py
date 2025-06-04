@@ -33,12 +33,25 @@ def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip() for col in df.columns]
+
         required_cols = [
-            'Target/Issuer Name', 'MI Transaction ID', 
+            'Target/Issuer Name', 'MI Transaction ID',
             'Implied Enterprise Value/ EBITDA (x)', 'Business Description',
             'Primary Industry', 'Web page'
         ]
+
+        # Check required columns
+        missing_required = [col for col in required_cols if col not in df.columns]
+        if missing_required:
+            st.error(f"Missing required columns: {missing_required}")
+            st.stop()
+
+        # Ensure the new column exists even if not populated yet
+        if 'Total Enterprise Value (mln$)' not in df.columns:
+            df['Total Enterprise Value (mln$)'] = None  # Placeholder for consistency
+
         return df.dropna(subset=required_cols)
+
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
@@ -154,6 +167,9 @@ def main():
     with st.sidebar:
         query_input = st.text_input("🌐 Paste company website URL (optional):")
         manual_description = st.text_area("📝 Or provide a company description manually (optional):")
+        st.markdown("### 💰 Transaction Size Filter")
+        min_value = st.number_input("Minimum Enterprise Value (mln $)", min_value=0.0, value=0.0, step=10.0)
+        max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
         start_search = st.button("🔍 Find Matches")
 
     # 🧱 Safeguard: if button wasn't clicked, don't process

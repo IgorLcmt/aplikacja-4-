@@ -35,10 +35,11 @@ def load_database() -> pd.DataFrame:
         df.columns = [col.strip() for col in df.columns]
 
         required_cols = [
-            'Target/Issuer Name', 'MI Transaction ID',
-            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)', 'Company Geography (Target/Issuer)', 'Business Description',
-            'Primary Industry', 'Web page'
-        ]
+              'Target/Issuer Name', 'MI Transaction ID',
+              'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
+              'Company Geography (Target/Issuer)', 'Business Description',
+              'Primary Industry', 'Web page'
+            ]
 
         # Check required columns
         missing_required = [col for col in required_cols if col not in df.columns]

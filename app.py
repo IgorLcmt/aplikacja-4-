@@ -153,19 +153,22 @@ def main():
 
     with st.sidebar:
         query_input = st.text_input("🌐 Paste company website URL:")
+        manual_description = st.text_area("📝 Or provide a company description manually (optional):")
 
-        if is_valid_url(query_input):
+        query_text = ""
+
+        if query_input and is_valid_url(query_input):
             with st.spinner("Scraping website..."):
                 query_text = scrape_website(query_input)
                 if not query_text:
-                    st.error("Website content could not be scraped.")
-                    return
-        else:
-            st.error("Please enter a valid website URL (http/https).")
-            return
+                    st.warning("Website content could not be scraped.")
 
-    if not query_input:
-        st.info("Enter a company profile to begin")
+    # Combine if both provided
+    if manual_description:
+        query_text = manual_description.strip() + "\n" + query_text
+
+    if not query_text:
+        st.info("Please enter a valid website or a company description to proceed.")
         return
 
     if st.session_state.generate_new:

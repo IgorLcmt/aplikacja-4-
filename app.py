@@ -156,7 +156,10 @@ def scrape_website(url: str) -> str:
         return soup.get_text(separator=" ", strip=True)[:MAX_TEXT_LENGTH]
     except Exception:
         return ""
-
+@st.cache_data
+def scrape_and_cache(url: str) -> str:
+    return scrape_website(url)
+    
 # ===== UTILS =====
 def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
     qualified = scores >= threshold
@@ -259,7 +262,7 @@ def main():
                 df_top40 = df.iloc[top_indices].copy()
 
                 with ThreadPoolExecutor() as executor:
-                    scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
+                    scraped_texts = list(executor.map(scrape_and_cache, df_top40["Web page"]))
 
                 with ThreadPoolExecutor() as executor:
                     explanations = list(executor.map(

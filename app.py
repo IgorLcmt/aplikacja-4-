@@ -33,7 +33,10 @@ def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
-        st.write("Loaded columns from Excel:", df.columns.tolist())
+        df["Total Enterprise Value (mln$)"] = pd.to_numeric(
+            df["Total Enterprise Value (mln$)"], errors="coerce"
+        )
+
 
         required_cols = [
             'Target/Issuer Name', 'MI Transaction ID',

@@ -32,7 +32,8 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-        df.columns = [col.strip() for col in df.columns]
+        df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
+        st.write("Loaded columns from Excel:", df.columns.tolist())
 
         required_cols = [
               'Target/Issuer Name', 'MI Transaction ID',
@@ -42,7 +43,10 @@ def load_database() -> pd.DataFrame:
             ]
 
         # Check required columns
-        missing_required = [col for col in required_cols if col not in df.columns]
+        actual = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
+        required = [col.strip().lower() for col in required_cols]
+
+        missing_required = [col for col in required if col not in actual]
         if missing_required:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()

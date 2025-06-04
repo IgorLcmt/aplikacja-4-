@@ -33,16 +33,17 @@ def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
-        df["Total Enterprise Value (mln$)"] = pd.to_numeric(
-            df["Total Enterprise Value (mln$)"], errors="coerce"
-        )
 
+        if "Total Enterprise Value (mln$)" in df.columns:
+            df["Total Enterprise Value (mln$)"] = pd.to_numeric(
+                df["Total Enterprise Value (mln$)"], errors="coerce"
+            )
 
-            required_cols = [  
-                'Target/Issuer Name', 'MI Transaction ID',
-                'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
-                'Announcement Date', 'Company Geography (Target/Issuer)',
-                'Business Description', 'Primary Industry', 'Web page'
+        required_cols = [
+            'Target/Issuer Name', 'MI Transaction ID',
+            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
+            'Announcement Date', 'Company Geography (Target/Issuer)',
+            'Business Description', 'Primary Industry', 'Web page'
         ]
 
         actual = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
@@ -53,6 +54,7 @@ def load_database() -> pd.DataFrame:
             st.stop()
 
         return df
+
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()

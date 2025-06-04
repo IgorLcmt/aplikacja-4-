@@ -175,6 +175,12 @@ def main():
         min_value = st.number_input("Minimum Enterprise Value (mln $)", min_value=0.0, value=0.0, step=10.0)
         max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
         start_search = st.button("🔍 Find Matches")
+    
+        # 🔁 Restart button
+        if st.button("🔄 Restart App"):
+            for key in st.session_state.keys():
+                del st.session_state[key]
+            st.experimental_rerun()
 
     if not start_search and st.session_state.get("generate_new", True):
         st.info("Enter a company website and/or description, then click **Find Matches** to start.")

@@ -38,7 +38,7 @@ def load_database() -> pd.DataFrame:
         )
 
 
-            required_cols = [  # remove trailing space in 'Announcement Date '
+            required_cols = [  
                 'Target/Issuer Name', 'MI Transaction ID',
                 'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
                 'Announcement Date', 'Company Geography (Target/Issuer)',

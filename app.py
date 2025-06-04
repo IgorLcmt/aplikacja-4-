@@ -199,6 +199,11 @@ def main():
             try:
                 df = load_database()
                 detected_industry = detect_industry_from_text(query_text, client)
+                if not detected_industry:
+                    st.warning("Could not detect industry from the input. Showing all companies.")
+                    detected_industry = ""
+                
+                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
                 st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry}")
 
                 df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]

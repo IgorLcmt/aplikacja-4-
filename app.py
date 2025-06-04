@@ -39,10 +39,11 @@ def load_database() -> pd.DataFrame:
 
 
         required_cols = [
-            'Target/Issuer Name', 'MI Transaction ID',
-            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
-            'Announcment Date ', 'Company Geography (Target/Issuer)', 'Business Description',
-            'Primary Industry', 'Web page'
+            required_cols = [  # remove trailing space in 'Announcement Date '
+                'Target/Issuer Name', 'MI Transaction ID',
+                'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
+                'Announcement Date', 'Company Geography (Target/Issuer)',
+                'Business Description', 'Primary Industry', 'Web page'
         ]
 
         actual = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]

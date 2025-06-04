@@ -180,7 +180,7 @@ def main():
         if st.button("🔄 Restart"):
             for key in st.session_state.keys():
                 del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
 
     if not start_search and st.session_state.get("generate_new", True):
         st.info("Enter a company website and/or description, then click **Find Matches** to start.")

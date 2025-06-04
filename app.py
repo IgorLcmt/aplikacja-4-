@@ -84,6 +84,10 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
         st.error(f"Embedding failed: {str(e)}")
         st.stop()
     return embeddings
+    
+@st.cache_data(show_spinner="Embedding database (cached)...")
+def get_cached_db_embeddings(descriptions: List[str], client: OpenAI) -> np.ndarray:
+    return np.array(embed_text_batch(descriptions, client))
 
 # ===== GPT FUNCTIONS =====
 def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
@@ -238,13 +242,12 @@ def main():
                     st.error("Failed to generate query variants.")
                     st.stop()
 
-                embeds = embed_text_batch(descriptions + query_variants, client)
-                if not embeds or len(embeds) < len(descriptions) + len(query_variants):
-                    st.error("Embedding failed or returned incomplete results.")
-                    st.stop()
-
-                db_embeds = np.array(embeds[:len(descriptions)])
-                query_embeds = np.array(embeds[len(descriptions):])
+                # 🧠 Use cached database embeddings
+                db_embeds = get_cached_db_embeddings(descriptions, client)
+        
+                # 🔁 Only embed the query + paraphrases live
+                query_embeds = np.array(embed_text_batch(query_variants, client))
+        
                 if query_embeds.size == 0:
                     st.error("Query embedding is empty.")
                     st.stop()

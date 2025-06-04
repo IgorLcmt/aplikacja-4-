@@ -32,6 +32,8 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
+
+        print("Raw columns from Excel:", df.columns.tolist())
         
         # Normalize column names
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]

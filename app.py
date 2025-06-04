@@ -33,6 +33,7 @@ def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
 
+        st.write("Raw columns from Excel:", df.columns.tolist())
         print("Raw columns from Excel:", df.columns.tolist())
         
         # Normalize column names

@@ -177,7 +177,7 @@ def main():
         start_search = st.button("🔍 Find Matches")
     
         # 🔁 Restart button
-        if st.button("🔄 Restart App"):
+        if st.button("🔄 Restart"):
             for key in st.session_state.keys():
                 del st.session_state[key]
             st.experimental_rerun()

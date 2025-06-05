@@ -166,7 +166,8 @@ def main():
     for key, val in session_defaults.items():
         if key not in st.session_state:
             st.session_state[key] = val
-
+    df, industry_list = load_database()
+    
     with st.sidebar:
         query_input = st.text_input("🌐 Paste company website URL (optional):")
         manual_description = st.text_area("📝 Or provide a company description manually (optional):")

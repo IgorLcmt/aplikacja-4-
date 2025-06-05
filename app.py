@@ -53,6 +53,18 @@ def load_database() -> tuple[pd.DataFrame, list]:
 
         industry_list = sorted(df["Primary Industry"].dropna().unique())
 
+        # ✅ Extract only the part inside parentheses
+        raw_industries = df["Primary Industry"].dropna().unique().tolist()
+        cleaned_industries = []
+    
+        for entry in raw_industries:
+            match = re.search(r"\((.*?)\)", str(entry))
+            if match:
+                cleaned_industries.append(match.group(1).strip())
+    
+        # Remove duplicates and sort
+        industry_list = sorted(set(cleaned_industries))
+    
         return df, industry_list
 
     except Exception as e:
@@ -209,7 +221,8 @@ def main():
             try:
                 df, industry_list = load_database()
                 if manual_industry != "Detect Automatically":
-                    df = df[df["Primary Industry"].str.contains(manual_industry, case=False, na=False)]
+                    pattern = re.escape(f"({manual_industry})")
+                    df = df[df["Primary Industry"].str.contains(pattern, case=False, na=False)]
                     detected_industry = manual_industry
                 else:
                     detected_industry = detect_industry_from_text(query_text, client)

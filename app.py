@@ -113,9 +113,8 @@ Company Description:
 """
     return gpt_chat("You are a factual M&A assistant.", prompt, client)
 
-@st.cache_data
+# 🚫 No caching here — avoids UnhashableParamError
 def embed_text_batch(texts: List[str], client: OpenAI) -> List[List[float]]:
-    from numpy import array
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str) and t.strip()]
     if not clean_texts:
         return []
@@ -187,10 +186,9 @@ def main():
         st.error("No companies match your filters.")
         return
 
-         # Embedding and Matching
+    # Embedding and Matching
     descriptions = df["Business Description"].astype(str).tolist()
 
-    # Defensive handling of paraphrasing
     paraphrases = paraphrase_query(query_text, client)
     if not paraphrases:
         paraphrases = []
@@ -225,8 +223,7 @@ def main():
         "Target/Issuer Name", "Primary Industry", "Total Enterprise Value (mln$)",
         "Business Description", "Similarity Score", "Explanation"
     ]], use_container_width=True)
-    
-    # Download
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df_top.to_excel(writer, index=False)

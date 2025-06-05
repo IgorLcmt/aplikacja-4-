@@ -287,7 +287,7 @@ def main():
         with col2:
             if st.button("🔄 Find New Matches"):
                 st.session_state.generate_new = True
-                   st.rerun()
+                st.rerun()
 
     if __name__ == "__main__":
         main()

@@ -38,6 +38,8 @@ def init_openai(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 @st.cache_data(show_spinner="Loading database...")
+st.markdown("📁 Loading database...")
+
 def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")

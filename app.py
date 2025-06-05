@@ -173,7 +173,7 @@ def main():
         "results": None,
         "scraped_cache": {},
         "previous_matches": set(),
-        "generate_new": False
+        "generate_new": True
     }
     for key, val in session_defaults.items():
         if key not in st.session_state:

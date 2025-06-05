@@ -29,7 +29,6 @@ def init_openai(api_key: str) -> OpenAI:
 
 # ===== DATA LOADING =====
 @st.cache_data(show_spinner="Loading database...")
-def load_database() -> pd.DataFrame:
     industry_list = sorted(df["Primary Industry"].dropna().unique())
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
@@ -53,7 +52,9 @@ def load_database() -> pd.DataFrame:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()
 
-        return df
+        industry_list = sorted(df["Primary Industry"].dropna().unique())
+        
+        return df, industry_list
 
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
@@ -206,7 +207,7 @@ def main():
     if st.session_state.generate_new:
         with st.spinner("Analyzing profile..."):
             try:
-                df = load_database()
+                df, industry_list = load_database()
                 if manual_industry != "Detect Automatically":
                     df = df[df["Primary Industry"].str.contains(manual_industry, case=False, na=False)]
                     detected_industry = manual_industry

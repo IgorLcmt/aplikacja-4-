@@ -30,6 +30,7 @@ def init_openai(api_key: str) -> OpenAI:
 # ===== DATA LOADING =====
 @st.cache_data(show_spinner="Loading database...")
 def load_database() -> pd.DataFrame:
+    industry_list = sorted(df["Primary Industry"].dropna().unique())
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
@@ -172,6 +173,10 @@ def main():
         st.markdown("### 💰 Transaction Size Filter")
         min_value = st.number_input("Minimum Enterprise Value (mln $)", min_value=0.0, value=0.0, step=10.0)
         max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
+        manual_industry = st.sidebar.selectbox(
+        "🏷️ Filter by Industry (optional override):",
+        options=["Detect Automatically"] + industry_list
+        )
         start_search = st.button("🔍 Find Matches")
         if st.button("🔄 Restart"):
             for key in st.session_state.keys():
@@ -202,13 +207,17 @@ def main():
         with st.spinner("Analyzing profile..."):
             try:
                 df = load_database()
-                detected_industry = detect_industry_from_text(query_text, client)
-                if not detected_industry:
-                    st.warning("Could not detect industry. Showing all companies.")
+                if manual_industry != "Detect Automatically":
+                    df = df[df["Primary Industry"].str.contains(manual_industry, case=False, na=False)]
+                    detected_industry = manual_industry
                 else:
-                    df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
+                    detected_industry = detect_industry_from_text(query_text, client)
+                    if detected_industry:
+                        df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
+                    else:
+                        st.warning("Could not detect industry. Showing all companies.")
 
-                st.sidebar.markdown(f"**🧠 Detected Industry:** {detected_industry or 'Not detected'}")
+                st.sidebar.markdown(f"**🧠 Industry Used:** {detected_industry or 'Not detected'}")
 
                 df = df[
                     (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &

@@ -53,7 +53,6 @@ def load_database() -> tuple[pd.DataFrame, list]:
 
         industry_list = sorted(df["Primary Industry"].dropna().unique())
 
-        # ✅ Extract only the part inside parentheses
         raw_industries = df["Primary Industry"].dropna().unique().tolist()
         cleaned_industries = []
     
@@ -62,7 +61,6 @@ def load_database() -> tuple[pd.DataFrame, list]:
             if match:
                 cleaned_industries.append(match.group(1).strip())
     
-        # Remove duplicates and sort
         industry_list = sorted(set(cleaned_industries))
     
         return df, industry_list
@@ -191,20 +189,16 @@ def main():
             options=industry_list,
             help="You can choose multiple industries or leave blank to auto-detect."
         )
-        if st.button("🔍 Find Matches"):
-            st.session_state.generate_new = True
-            st.session_state.results = None  # optional, clears old output
-            st.rerun()
-        
+        start_search = st.button("🔍 Find Matches")
         if st.button("🔄 Restart"):
-            for key in list(st.session_state.keys()):
+            for key in st.session_state.keys():
                 del st.session_state[key]
             st.rerun()
 
-    if not st.session_state.generate_new and st.session_state.results is None:
+    if not start_search and st.session_state.get("generate_new", True):
         st.info("Enter a company website and/or description, then click **Find Matches** to start.")
         return
-    
+
     query_text = ""
 
     if start_search or st.session_state.get("generate_new", False):
@@ -228,12 +222,10 @@ def main():
                 from difflib import get_close_matches
 
                 if manual_industries:
-                    # Build a fuzzy OR filter based on partial similarity
                     raw_industries = df["Primary Industry"].astype(str).tolist()
                     fuzzy_matches = []
                 
                     for selected in manual_industries:
-                        # Create pattern that looks for (Selected Industry) inside text
                         matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
                         fuzzy_matches.extend(matches)
                 

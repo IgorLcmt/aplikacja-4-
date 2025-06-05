@@ -187,32 +187,33 @@ def main():
         st.error("No companies match your filters.")
         return
 
-     # Embedding and Matching
-     descriptions = df["Business Description"].astype(str).tolist()
-     # Defensive handling of paraphrasing
-     paraphrases = paraphrase_query(query_text, client)
-     if not paraphrases:
-         paraphrases = []
-    
-     query_variants = [q.strip() for q in ([query_text] + paraphrases) if q.strip()]
-     if not query_variants:
-         st.error("Failed to generate valid query variants.")
-         return
-    
-     query_embeds = np.array(embed_text_batch(query_variants, client))
-     if query_embeds.size == 0:
-         st.error("Failed to embed query.")
-         return
-    
-     query_embed = np.average(query_embeds, axis=0).reshape(1, -1)
-     db_embeds = get_cached_db_embeddings(descriptions, client)
-     scores = cosine_similarity(db_embeds, query_embed).flatten()
-     top_indices = np.argsort(-scores)[:20]
-     df_top = df.iloc[top_indices].copy()
-    
-        with ThreadPoolExecutor() as executor:
-            explanations = list(executor.map(lambda desc: explain_match(query_text, desc, client),
-                                             df_top["Business Description"]))
+         # Embedding and Matching
+    descriptions = df["Business Description"].astype(str).tolist()
+
+    # Defensive handling of paraphrasing
+    paraphrases = paraphrase_query(query_text, client)
+    if not paraphrases:
+        paraphrases = []
+
+    query_variants = [q.strip() for q in ([query_text] + paraphrases) if q.strip()]
+    if not query_variants:
+        st.error("Failed to generate valid query variants.")
+        return
+
+    query_embeds = np.array(embed_text_batch(query_variants, client))
+    if query_embeds.size == 0:
+        st.error("Failed to embed query.")
+        return
+
+    query_embed = np.average(query_embeds, axis=0).reshape(1, -1)
+    db_embeds = get_cached_db_embeddings(descriptions, client)
+    scores = cosine_similarity(db_embeds, query_embed).flatten()
+    top_indices = np.argsort(-scores)[:20]
+    df_top = df.iloc[top_indices].copy()
+
+    with ThreadPoolExecutor() as executor:
+        explanations = list(executor.map(lambda desc: explain_match(query_text, desc, client),
+                                         df_top["Business Description"]))
 
     df_top["Similarity Score"] = scores[top_indices]
     df_top["Explanation"] = explanations
@@ -220,10 +221,11 @@ def main():
 
     # Display Results
     st.subheader("Top 20 Matching Transactions")
-    st.dataframe(df_top[["Target/Issuer Name", "Primary Industry", "Total Enterprise Value (mln$)",
-                         "Business Description", "Similarity Score", "Explanation"]],
-                 use_container_width=True)
-
+    st.dataframe(df_top[[
+        "Target/Issuer Name", "Primary Industry", "Total Enterprise Value (mln$)",
+        "Business Description", "Similarity Score", "Explanation"
+    ]], use_container_width=True)
+    
     # Download
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:

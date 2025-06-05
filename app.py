@@ -216,7 +216,16 @@ def main():
                 descriptions = df["Business Description"].astype(str).tolist()
                 query_variants = [query_text] + paraphrase_query(query_text, client)
                 db_embeds = get_cached_db_embeddings(descriptions, client)
+                query_variants = [q.strip() for q in ([query_text] + paraphrase_query(query_text, client)) if q.strip()]
+                if not query_variants:
+                    st.error("No valid query variants generated.")
+                    st.stop()
+
                 query_embeds = np.array(embed_text_batch(query_variants, client))
+                if query_embeds.size == 0:
+                    st.error("Query embedding failed or returned empty result.")
+                    st.stop()
+                
                 query_embed = np.average(query_embeds, axis=0, weights=[2.0] + [1.0]*(len(query_embeds)-1)).reshape(1, -1)
                 scores = cosine_similarity(db_embeds, query_embed).flatten()
                 top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:40]

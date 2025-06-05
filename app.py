@@ -306,7 +306,12 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Company_Matches.xlsx")
+                st.download_button(
+                "⬇️ Download Excel",
+                data=output.getvalue(),
+                file_name="Company_Matches.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         with col2:
             if st.button("🔄 Find New Matches"):
                 st.session_state.generate_new = True

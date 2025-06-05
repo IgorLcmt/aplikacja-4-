@@ -173,7 +173,7 @@ def main():
         "results": None,
         "scraped_cache": {},
         "previous_matches": set(),
-        "generate_new": True
+        "generate_new": False
     }
     for key, val in session_defaults.items():
         if key not in st.session_state:
@@ -197,8 +197,8 @@ def main():
                 del st.session_state[key]
             st.rerun()
 
-    if not start_search and st.session_state.get("generate_new", True) and st.session_state.results is None:
-        st.info("Enter a company website and/or description to proceed.")
+    if not start_search and st.session_state.get("generate_new", True) and st.session_state.get("results") is None:
+        st.info("Enter a company website and/or description, then click **Find Matches** to start.")
         return
     
     query_text = ""

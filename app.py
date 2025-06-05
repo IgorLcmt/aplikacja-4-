@@ -7,10 +7,14 @@ from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import List
 from concurrent.futures import ThreadPoolExecutor
+from tenacity import retry, wait_exponential, stop_after_attempt
 import tiktoken
 import io
 import re
 import time
+import validators
+import html
+import bleach
 
 # Validate and clean URL
 def clean_url(url: str) -> str:

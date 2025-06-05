@@ -197,10 +197,10 @@ def main():
                 del st.session_state[key]
             st.rerun()
 
-    if not start_search and st.session_state.get("generate_new", True):
-        st.info("Enter a company website and/or description, then click **Find Matches** to start.")
+    if not start_search and st.session_state.get("generate_new", True) and st.session_state.results is None:
+        st.info("Enter a company website and/or description to proceed.")
         return
-
+    
     query_text = ""
 
     if start_search or st.session_state.get("generate_new", False):

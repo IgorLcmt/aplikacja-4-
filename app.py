@@ -29,6 +29,7 @@ def init_openai(api_key: str) -> OpenAI:
 
 # ===== DATA LOADING =====
 @st.cache_data(show_spinner="Loading database...")
+def load_database() -> tuple[pd.DataFrame, list]:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
@@ -43,16 +44,16 @@ def init_openai(api_key: str) -> OpenAI:
             'Announcement Date', 'Company Geography (Target/Issuer)',
             'Business Description', 'Primary Industry', 'Web page'
         ]
-        actual_cols = [col.strip().lower().replace('\xa0', ' ') for col in df.columns]
+        actual_cols = [col.strip().lower() for col in df.columns]
         required_check = [col.strip().lower() for col in required_cols]
-
         missing_required = [col for col in required_check if col not in actual_cols]
         if missing_required:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()
 
+        # ✅ Correct place to define industry list
         industry_list = sorted(df["Primary Industry"].dropna().unique())
-        
+
         return df, industry_list
 
     except Exception as e:

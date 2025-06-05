@@ -188,6 +188,18 @@ def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
 
 # ===== MAIN APP =====
 def main():
+     # ===== Initialize Session State Defaults =====
+    session_defaults = {
+        "results": None,
+        "scraped_cache": {},
+        "previous_matches": set(),
+        "generate_new": True
+    }
+
+    for key, val in session_defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+            
     api_key = st.secrets.get("openai", {}).get("api_key")
     if not api_key:
         st.error("OpenAI API key missing")

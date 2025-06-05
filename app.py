@@ -51,7 +51,6 @@ def load_database() -> tuple[pd.DataFrame, list]:
             st.error(f"Missing required columns: {missing_required}")
             st.stop()
 
-        # ✅ Correct place to define industry list
         industry_list = sorted(df["Primary Industry"].dropna().unique())
 
         return df, industry_list
@@ -227,7 +226,7 @@ def main():
 
                 if df.empty:
                     st.warning("No companies match filters. Showing full list.")
-                    df = load_database()
+                    df, industry_list = load_database()
 
                 descriptions = df["Business Description"].astype(str).tolist()
                 query_variants = [query_text] + paraphrase_query(query_text, client)

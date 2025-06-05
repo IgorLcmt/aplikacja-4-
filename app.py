@@ -125,7 +125,6 @@ def embed_text_batch(texts: List[str], client: OpenAI) -> List[List[float]]:
         embeddings.extend([record.embedding for record in response.data])
     return embeddings
 
-@st.cache_data(show_spinner="Embedding company descriptions...")
 def get_cached_db_embeddings(descriptions: List[str], client: OpenAI) -> np.ndarray:
     return np.array(embed_text_batch(descriptions, client))
 

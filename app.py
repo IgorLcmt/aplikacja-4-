@@ -214,7 +214,7 @@ def main():
                     df = load_database()
 
                 descriptions = df["Business Description"].astype(str).tolist()
-                query_variants = [query_text] + paraphrase_query(query_text, client)
+                query_variants.append(detect_industry_from_text(query_text, client))
                 db_embeds = get_cached_db_embeddings(descriptions, client)
                 query_variants = [q.strip() for q in ([query_text] + paraphrase_query(query_text, client)) if q.strip()]
                 if not query_variants:

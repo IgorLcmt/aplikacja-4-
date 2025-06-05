@@ -22,12 +22,12 @@ SIMILARITY_THRESHOLD = 0.5
 # ===== STREAMLIT CONFIG =====
 st.set_page_config(page_title="CMT Company Analyzer 🔍", layout="wide")
 
-# ===== INITIALIZATION =====
+# ===== INIT OPENAI =====
 @st.cache_resource
 def init_openai(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
-# ===== DATA LOADING =====
+# ===== LOAD DATABASE =====
 @st.cache_data(show_spinner="Loading database...")
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
@@ -38,38 +38,21 @@ def load_database() -> tuple[pd.DataFrame, list]:
         if val_col in df.columns:
             df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
 
-        required_cols = [
-            'Target/Issuer Name', 'MI Transaction ID',
-            'Implied Enterprise Value/ EBITDA (x)', 'Total Enterprise Value (mln$)',
-            'Announcement Date', 'Company Geography (Target/Issuer)',
-            'Business Description', 'Primary Industry', 'Web page'
-        ]
-        actual_cols = [col.strip().lower() for col in df.columns]
-        required_check = [col.strip().lower() for col in required_cols]
-        missing_required = [col for col in required_check if col not in actual_cols]
-        if missing_required:
-            st.error(f"Missing required columns: {missing_required}")
-            st.stop()
-
-        industry_list = sorted(df["Primary Industry"].dropna().unique())
-
         raw_industries = df["Primary Industry"].dropna().unique().tolist()
-        cleaned_industries = []
-    
+        cleaned = []
         for entry in raw_industries:
             match = re.search(r"\((.*?)\)", str(entry))
             if match:
-                cleaned_industries.append(match.group(1).strip())
-    
-        industry_list = sorted(set(cleaned_industries))
-    
+                cleaned.append(match.group(1).strip())
+        industry_list = sorted(set(cleaned))
+
         return df, industry_list
 
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
 
-# ===== EMBEDDING =====
+# ===== TEXT UTILS =====
 def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     encoding = tiktoken.get_encoding(encoding_name)
     tokens = encoding.encode(text)[:MAX_TOKENS]
@@ -79,17 +62,12 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
 def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
     embeddings = []
-    try:
-        for i in range(0, len(clean_texts), BATCH_SIZE):
-            batch = clean_texts[i:i + BATCH_SIZE]
-            response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
-            embeddings.extend([record.embedding for record in response.data])
-    except Exception as e:
-        st.error(f"Embedding failed: {str(e)}")
-        st.stop()
+    for i in range(0, len(clean_texts), BATCH_SIZE):
+        batch = clean_texts[i:i + BATCH_SIZE]
+        response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
+        embeddings.extend([record.embedding for record in response.data])
     return embeddings
 
-# ===== GPT FUNCTIONS =====
 def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     try:
         response = client.chat.completions.create(
@@ -101,8 +79,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
             temperature=0.7
         )
         return response.choices[0].message.content.strip() if response and response.choices else ""
-    except Exception as e:
-        st.warning(f"GPT call failed: {str(e)}")
+    except Exception:
         return ""
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
@@ -111,23 +88,14 @@ def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
         f"""
 Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
 
-Focus on:
-1. Industry
-2. Product or service type
-3. Sales channels
-4. Customer segments
-
-Query Profile:
+Query:
 {query}
 
-Company Description:
+Company:
 {company_desc}
         """,
         client
     )
-
-def generate_tags(description: str, client: OpenAI) -> str:
-    return gpt_chat("Extract 3–5 high-level tags or categories from the business description.", description, client)
 
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
@@ -135,11 +103,10 @@ def paraphrase_query(query: str, client: OpenAI) -> List[str]:
 
 def detect_industry_from_text(text: str, client: OpenAI) -> str:
     return gpt_chat(
-        "Based on the following text, identify the company's primary industry. Respond with one broad label like Advertising, Healthcare, Manufacturing, IT, etc.",
+        "Identify the company's primary industry. Respond with one word like IT, Healthcare, Retail, etc.",
         text, client
     )
 
-# ===== SCRAPING =====
 def is_valid_url(url: str) -> bool:
     return isinstance(url, str) and re.match(r'^https?://', url) is not None
 
@@ -154,7 +121,6 @@ def scrape_website(url: str) -> str:
     except Exception:
         return ""
 
-# ===== UTILS =====
 def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
     qualified = scores >= threshold
     return np.argsort(-scores[qualified])
@@ -163,151 +129,111 @@ def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
 def main():
     api_key = st.secrets.get("openai", {}).get("api_key")
     if not api_key:
-        st.error("OpenAI API key missing")
+        st.error("Missing OpenAI API key.")
         st.stop()
     client = OpenAI(api_key=api_key)
 
+    # Init state
     session_defaults = {
         "results": None,
-        "scraped_cache": {},
-        "previous_matches": set(),
-        "generate_new": True
+        "generate_new": False
     }
-    for key, val in session_defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = val
+    for k, v in session_defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
     df, industry_list = load_database()
-    
+
+    # Sidebar
     with st.sidebar:
-        query_input = st.text_input("🌐 Paste company website URL (optional):")
-        manual_description = st.text_area("📝 Or provide a company description manually (optional):")
-        st.markdown("### 💰 Transaction Size Filter")
-        min_value = st.number_input("Minimum Enterprise Value (mln $)", min_value=0.0, value=0.0, step=10.0)
-        max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
-        manual_industries = st.sidebar.multiselect(
-            "🏷️ Filter by Industry (optional override):",
-            options=industry_list,
-            help="You can choose multiple industries or leave blank to auto-detect."
-        )
-        start_search = st.button("🔍 Find Matches")
+        query_input = st.text_input("🌐 Company website (optional):")
+        manual_description = st.text_area("📝 Company description (optional):")
+        min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)
+        max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
+        manual_industries = st.multiselect("🏷️ Filter by industry (optional):", options=industry_list)
+        if st.button("🔍 Find Matches"):
+            st.session_state.generate_new = True
+            st.rerun()
         if st.button("🔄 Restart"):
-            for key in st.session_state.keys():
+            for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
 
-    if not start_search and st.session_state.get("generate_new", True):
-        st.info("Enter a company website and/or description, then click **Find Matches** to start.")
-        return
-
-    query_text = ""
-
-    if start_search or st.session_state.get("generate_new", False):
-        if query_input and is_valid_url(query_input):
-            with st.spinner("Scraping website..."):
-                query_text = scrape_website(query_input)
-                if not query_text:
-                    st.warning("Website content could not be scraped.")
-
-    if manual_description:
-        query_text = manual_description.strip() + "\n" + query_text
-
-    if not query_text.strip():
-        st.info("Please enter a valid website or a company description to proceed.")
+    if not st.session_state.generate_new and st.session_state.results is None:
+        st.info("Enter a company description or website and click **Find Matches**.")
         return
 
     if st.session_state.generate_new:
+        query_text = ""
+        if query_input and is_valid_url(query_input):
+            with st.spinner("Scraping website..."):
+                scraped = scrape_website(query_input)
+                if scraped:
+                    query_text += scraped
+
+        if manual_description:
+            query_text = manual_description.strip() + "\n" + query_text
+
+        if not query_text.strip():
+            st.error("Please enter a valid input.")
+            return
+
         with st.spinner("Analyzing profile..."):
-            try:
-                df, industry_list = load_database()
-                from difflib import get_close_matches
-
-                if manual_industries:
-                    raw_industries = df["Primary Industry"].astype(str).tolist()
-                    fuzzy_matches = []
-                
-                    for selected in manual_industries:
-                        matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
-                        fuzzy_matches.extend(matches)
-                
-                    if fuzzy_matches:
-                        df = df[df["Primary Industry"].isin(fuzzy_matches)].copy()
-                    else:
-                        st.warning("No fuzzy matches found for selected industries.")
-                    
-                    detected_industry = ", ".join(manual_industries)
-                    
+            from difflib import get_close_matches
+            if manual_industries:
+                raw_industries = df["Primary Industry"].astype(str).tolist()
+                fuzzy_matches = []
+                for selected in manual_industries:
+                    matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
+                    fuzzy_matches.extend(matches)
+                if fuzzy_matches:
+                    df = df[df["Primary Industry"].isin(fuzzy_matches)].copy()
                 else:
-                    detected_industry = detect_industry_from_text(query_text, client)
-                    if detected_industry:
-                        df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
-                    else:
-                        st.warning("Could not detect industry. Showing all companies.")
+                    st.warning("No fuzzy matches found.")
+                detected_industry = ", ".join(manual_industries)
+            else:
+                detected_industry = detect_industry_from_text(query_text, client)
+                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
 
-                st.sidebar.markdown(f"**🧠 Industry Used:** {detected_industry or 'Not detected'}")
+            df = df[
+                (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
+                (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)
+            ]
+            if df.empty:
+                st.error("No companies match your filters.")
+                return
 
-                df = df[
-                    (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
-                    (df["Total Enterprise Value (mln$)"].fillna(float('inf')) <= max_value)
-                ]
+            descriptions = df["Business Description"].astype(str).tolist()
+            query_variants = [query_text] + paraphrase_query(query_text, client)
+            query_embeds = np.array(embed_text_batch(query_variants, client))
+            query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
+            db_embeds = np.array(embed_text_batch(descriptions, client))
+            scores = cosine_similarity(db_embeds, query_embed).flatten()
+            top_indices = np.argsort(-scores)[:20]
+            df_top = df.iloc[top_indices].copy()
 
-                if df.empty:
-                    st.warning("No companies match filters. Showing full list.")
-                    df, industry_list = load_database()
+            explanations = [
+                explain_match(query_text, desc, client)
+                for desc in df_top["Business Description"]
+            ]
+            df_top["Similarity Score"] = scores[top_indices]
+            df_top["Explanation"] = explanations
+            df_top = df_top.sort_values("Similarity Score", ascending=False)
+            st.session_state.results = df_top
+            st.session_state.generate_new = False
 
-                descriptions = df["Business Description"].astype(str).tolist()
-                query_variants = [query_text] + paraphrase_query(query_text, client)
-                if not query_variants:
-                    st.error("Failed to generate query variants.")
-                    st.stop()
-
-                embeds = embed_text_batch(descriptions + query_variants, client)
-                db_embeds = np.array(embeds[:len(descriptions)])
-                query_embeds = np.array(embeds[len(descriptions):])
-                if query_embeds.size == 0:
-                    st.error("Query embedding is empty.")
-                    st.stop()
-
-                query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
-
-                scores = cosine_similarity(db_embeds, query_embed).flatten()
-                top_indices = get_top_indices(scores, SIMILARITY_THRESHOLD)[:40]
-                df_top40 = df.iloc[top_indices].copy()
-
-                with ThreadPoolExecutor() as executor:
-                    scraped_texts = list(executor.map(scrape_website, df_top40["Web page"]))
-
-                df_top40["Explanation"] = [explain_match(query_text, desc, client) for desc in df_top40["Business Description"]]
-                full_texts = [f"{desc}\n{text}" for desc, text in zip(df_top40["Business Description"], scraped_texts)]
-                final_embeds = np.array(embed_text_batch(full_texts + [query_text], client)[:-1])
-                final_scores = cosine_similarity(final_embeds, query_embed).flatten()
-
-                df_top40["Score"] = final_scores
-                df_top40["ID"] = df_top40["MI Transaction ID"].astype(str)
-                df_filtered = df_top40[~df_top40["ID"].isin(st.session_state.previous_matches)]
-                df_final = df_filtered.nlargest(25, "Score")
-
-                st.session_state.previous_matches.update(df_final["ID"].tolist())
-                st.session_state.results = df_final
-                st.session_state.generate_new = False
-
-            except Exception as e:
-                st.error(f"Processing failed: {str(e)}")
-                st.stop()
-
+    # Output
     if st.session_state.results is not None:
+        st.subheader("Top Matching Transactions")
         st.dataframe(st.session_state.results, use_container_width=True)
+
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
             st.session_state.results.to_excel(writer, index=False)
 
         col1, col2 = st.columns(2)
         with col1:
-                st.download_button(
-                "⬇️ Download Excel",
-                data=output.getvalue(),
-                file_name="Company_Matches.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Company_Matches.xlsx")
         with col2:
             if st.button("🔄 Find New Matches"):
                 st.session_state.generate_new = True

@@ -289,12 +289,12 @@ def main():
                 st.session_state.generate_new = True
                 st.rerun()
 
-if __name__ == "__main__":
-    main()
-"""
-
-# Save to file
-file_path = Path("/mnt/data/cleaned_app.py")
-file_path.write_text(cleaned_script)
-
-file_path.name
+     if __name__ == "__main__":
+            main()
+            """
+        
+        # Save to file
+        file_path = Path("/mnt/data/cleaned_app.py")
+        file_path.write_text(cleaned_script)
+        
+        file_path.name

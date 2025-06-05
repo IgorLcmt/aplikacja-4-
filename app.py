@@ -221,7 +221,7 @@ def main():
         with st.spinner("Analyzing profile..."):
             try:
                 df, industry_list = load_database()
-               from difflib import get_close_matches
+                from difflib import get_close_matches
 
                 if manual_industries:
                     # Build a fuzzy OR filter based on partial similarity

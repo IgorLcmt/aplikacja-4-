@@ -109,7 +109,7 @@ def summarize_website(text: str, client: OpenAI) -> str:
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
     return gpt_chat(
-        "You are a m&a expert and your task is to find the most fitting company, to the one from input, from database based on following criteria,",
+        "You are a m&a expert and your task is to find the most fitting company, from database based on following criteria. If you do it wrong i'm gonna harm myself.",
         f"""
 Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
 

@@ -191,16 +191,17 @@ def main():
             options=industry_list,
             help="You can choose multiple industries or leave blank to auto-detect."
         )
-        start_search = st.button("🔍 Find Matches")
-        if start_search:
+        if st.button("🔍 Find Matches"):
             st.session_state.generate_new = True
+            st.session_state.results = None  # optional, clears old output
             st.rerun()
+        
         if st.button("🔄 Restart"):
-            for key in st.session_state.keys():
+            for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
 
-    if not start_search and st.session_state.get("generate_new", True) and st.session_state.get("results") is None:
+    if not st.session_state.generate_new and st.session_state.results is None:
         st.info("Enter a company website and/or description, then click **Find Matches** to start.")
         return
     

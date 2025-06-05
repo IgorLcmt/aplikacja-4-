@@ -192,6 +192,9 @@ def main():
             help="You can choose multiple industries or leave blank to auto-detect."
         )
         start_search = st.button("🔍 Find Matches")
+        if start_search:
+            st.session_state.generate_new = True
+            st.rerun()
         if st.button("🔄 Restart"):
             for key in st.session_state.keys():
                 del st.session_state[key]

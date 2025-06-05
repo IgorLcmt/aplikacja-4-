@@ -32,9 +32,6 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> pd.DataFrame:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-
-        st.write("Raw columns from Excel:", df.columns.tolist())
-        print("Raw columns from Excel:", df.columns.tolist())
         
         # Normalize column names
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
@@ -112,7 +109,7 @@ def summarize_website(text: str, client: OpenAI) -> str:
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
     return gpt_chat(
-        "You are a business analyst evaluating company fit for strategic transactions.",
+        "You are a m&a expert and your task is to find the most fitting company, to the one from input, from database based on following criteria,",
         f"""
 Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
 

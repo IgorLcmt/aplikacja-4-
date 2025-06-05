@@ -186,9 +186,10 @@ def main():
         st.markdown("### 💰 Transaction Size Filter")
         min_value = st.number_input("Minimum Enterprise Value (mln $)", min_value=0.0, value=0.0, step=10.0)
         max_value = st.number_input("Maximum Enterprise Value (mln $)", min_value=0.0, value=10_000.0, step=10.0)
-        manual_industry = st.sidebar.selectbox(
-        "🏷️ Filter by Industry (optional override):",
-        options=["Detect Automatically"] + industry_list
+        manual_industries = st.sidebar.multiselect(
+            "🏷️ Filter by Industry (optional override):",
+            options=industry_list,
+            help="You can choose multiple industries or leave blank to auto-detect."
         )
         start_search = st.button("🔍 Find Matches")
         if st.button("🔄 Restart"):
@@ -220,10 +221,25 @@ def main():
         with st.spinner("Analyzing profile..."):
             try:
                 df, industry_list = load_database()
-                if manual_industry != "Detect Automatically":
-                    pattern = re.escape(f"({manual_industry})")
-                    df = df[df["Primary Industry"].str.contains(pattern, case=False, na=False)]
-                    detected_industry = manual_industry
+               from difflib import get_close_matches
+
+                if manual_industries:
+                    # Build a fuzzy OR filter based on partial similarity
+                    raw_industries = df["Primary Industry"].astype(str).tolist()
+                    fuzzy_matches = []
+                
+                    for selected in manual_industries:
+                        # Create pattern that looks for (Selected Industry) inside text
+                        matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
+                        fuzzy_matches.extend(matches)
+                
+                    if fuzzy_matches:
+                        df = df[df["Primary Industry"].isin(fuzzy_matches)].copy()
+                    else:
+                        st.warning("No fuzzy matches found for selected industries.")
+                    
+                    detected_industry = ", ".join(manual_industries)
+                    
                 else:
                     detected_industry = detect_industry_from_text(query_text, client)
                     if detected_industry:

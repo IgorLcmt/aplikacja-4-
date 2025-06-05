@@ -29,7 +29,6 @@ def init_openai(api_key: str) -> OpenAI:
 
 # ===== DATA LOADING =====
 @st.cache_data(show_spinner="Loading database...")
-    industry_list = sorted(df["Primary Industry"].dropna().unique())
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]

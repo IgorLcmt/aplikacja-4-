@@ -11,6 +11,7 @@ import tiktoken
 import io
 import re
 import time
+from newspaper import Article
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
@@ -138,20 +139,15 @@ def detect_industry_from_text(text: str, client: OpenAI) -> str:
 def is_valid_url(url: str) -> bool:
     return isinstance(url, str) and re.match(r'^https?://', url) is not None
 
+
 def scrape_website(url: str) -> str:
     if not is_valid_url(url):
         return ""
     try:
-        downloaded = trafilatura.fetch_url(url)
-        if not downloaded:
-            return ""
-        result = trafilatura.extract(
-            downloaded,
-            include_comments=False,
-            include_tables=False,
-            no_fallback=True
-        )
-        return result[:MAX_TEXT_LENGTH] if result else ""
+        article = Article(url)
+        article.download()
+        article.parse()
+        return article.text[:MAX_TEXT_LENGTH]
     except Exception:
         return ""
 

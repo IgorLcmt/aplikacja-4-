@@ -11,8 +11,6 @@ import tiktoken
 import io
 import re
 import time
-from bs4 import BeautifulSoup
-import requests
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
@@ -42,14 +40,10 @@ def load_database() -> tuple[pd.DataFrame, list]:
 
         industry_candidates = df["Primary Industry"].dropna().astype(str).tolist()
 
-        # Use only strings that are alphabetic and reasonably short
         cleaned = []
         for entry in industry_candidates:
             match = re.search(r"\((.*?)\)", entry)
-            if match:
-                value = match.group(1).strip()
-            else:
-                value = entry.strip()
+            value = match.group(1).strip() if match else entry.strip()
             if value and any(c.isalpha() for c in value) and len(value) <= 157:
                 cleaned.append(value)
 
@@ -92,7 +86,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
     return gpt_chat(
-        "You are a business analyst and you task is to find the most accurate match of companies. Be critical while explaning, don't try to force match.",
+        "You are a business analyst and your task is to find the most accurate match of companies. Be critical while explaining, don't try to force match.",
         f"""Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
 
 Focus on:
@@ -122,9 +116,7 @@ def scrape_website_cached(url: str) -> str:
 
 def get_summarized_website(url: str, client: OpenAI) -> str:
     scraped = scrape_website_cached(url)
-    if scraped:
-        return summarize_scraped_text(scraped, client)
-    return ""
+    return summarize_scraped_text(scraped, client) if scraped else ""
 
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
@@ -145,8 +137,7 @@ def scrape_website(url: str) -> str:
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
-        text = soup.get_text(separator=" ", strip=True)
-        return text[:MAX_TEXT_LENGTH]
+        return soup.get_text(separator=" ", strip=True)[:MAX_TEXT_LENGTH]
     except Exception:
         return ""
 
@@ -162,11 +153,7 @@ def main():
         st.stop()
     client = OpenAI(api_key=api_key)
 
-    # Init state
-    session_defaults = {
-        "results": None,
-        "generate_new": False
-    }
+    session_defaults = {"results": None, "generate_new": False}
     for k, v in session_defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
@@ -200,56 +187,37 @@ def main():
             with st.spinner("Scraping and summarizing website..."):
                 summarized = get_summarized_website(query_input, client)
                 st.write("Website Summary:", summarized)
-
                 if summarized:
-                    summarized = st.text_area(
-                        "📝 Website Summary (you can edit it before matching):",
-                        summarized,
-                        height=250
-                    )
-                
-                    # Confirm checkbox
-                    description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
-                
+                    summarized = st.text_area("📝 Website Summary (you can edit it before matching):", summarized, height=250)
+                    query_text += summarized
                 else:
                     st.warning("Could not extract usable content from the website.")
-                
-                # Combine input sources correctly
-                if manual_description and summarized:
-                    query_text = manual_description.strip() + "\n" + summarized
-                elif manual_description:
-                    query_text = manual_description.strip()
-                elif summarized:
-                    query_text = summarized
-        
-                if not query_text.strip():
-                    st.error("Please enter a valid input.")
-                    return
-        
-                # Require confirmation before continuing
-                description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
+        if manual_description:
+            query_text = manual_description.strip() + "\n" + query_text
 
-                if not description_confirmed:
-                    st.warning("Please confirm the company description before proceeding.")
-                    return
-                
-                with st.spinner("Analyzing profile..."):
-                    from difflib import get_close_matches
-                    detected_industry = detect_industry_from_text(query_text, client)
-                    st.info(f"Detected primary industry: **{detected_industry}**")
-                
-                    industry_embeddings_batch = embed_text_batch([detected_industry], client)
-                    if not industry_embeddings_batch:
-                        st.error("Industry embedding failed.")
-                        st.stop()
-                    industry_embeddings = industry_embeddings_batch[0]
-                
-                    unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-                    industry_to_embed = []
-                    for i in unique_industries:
-                        match = re.search(r"\((.*?)\)", i)
-                        cleaned = match.group(1) if match else i
-                        industry_to_embed.append(cleaned.strip())
+        if not query_text.strip():
+            st.error("Please enter a valid input.")
+            return
+
+        description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
+        if not description_confirmed:
+            st.warning("Please confirm the company description before proceeding.")
+            return
+
+        with st.spinner("Analyzing profile..."):
+            from difflib import get_close_matches
+            detected_industry = detect_industry_from_text(query_text, client)
+            st.info(f"Detected primary industry: **{detected_industry}**")
+
+            industry_embeddings_batch = embed_text_batch([detected_industry], client)
+            if not industry_embeddings_batch:
+                st.error("Industry embedding failed.")
+                st.stop()
+            industry_embeddings = industry_embeddings_batch[0]
+
+            unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+            industry_to_embed = [re.search(r"\((.*?)\)", i).group(1) if re.search(r"\((.*?)\)", i) else i for i in unique_industries]
+            industry_to_embed = [i.strip() for i in industry_to_embed]
 
             embedded_db_industries = embed_text_batch(industry_to_embed, client)
             industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
@@ -257,26 +225,15 @@ def main():
             matching_industries = [unique_industries[i] for i in top_indices]
             initial_filter = df["Primary Industry"].isin(matching_industries)
 
+            fuzzy_matches = []
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
-                fuzzy_matches = []
                 for selected in manual_industries:
-                    matches = get_close_matches(selected, raw_industries, n=20, cutoff=0.6)
-                    fuzzy_matches.extend(matches)
-                if fuzzy_matches:
-                    manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                    if use_detected_also:
-                        combined_filter = manual_filter | initial_filter
-                        st.info(f"Filtered by manually selected + detected industries ({len(fuzzy_matches)} manual matches).")
-                    else:
-                        combined_filter = manual_filter
-                        st.info(f"Filtered by manually selected industries only ({len(fuzzy_matches)} matches).")
-                else:
-                    st.warning("Manual industry match failed — falling back to detected.")
-                    combined_filter = initial_filter
+                    fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
+                manual_filter = df["Primary Industry"].isin(fuzzy_matches)
+                combined_filter = manual_filter | initial_filter if use_detected_also else manual_filter
             else:
                 combined_filter = initial_filter
-                st.info("Filtered by AI-detected industry only.")
 
             df = df[combined_filter].copy()
             df = df[
@@ -295,19 +252,15 @@ def main():
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
-            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
 
-            explanations = [
-                explain_match(query_text, desc, client)
-                for desc in df_top["Business Description"]
-            ]
+            explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]
             df_top["Explanation"] = explanations
             df_top = df_top.sort_values("Similarity Score", ascending=False)
+
             if manual_industries or use_detected_also:
                 valid_industries = set(matching_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
-
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
 

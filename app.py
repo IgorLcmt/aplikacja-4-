@@ -217,6 +217,13 @@ def main():
         if not query_text.strip():
             st.error("Please enter a valid input.")
             return
+        
+        # Require confirmation before continuing
+        description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
+        
+        if not description_confirmed:
+            st.warning("Please confirm the company description before proceeding.")
+            return
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches

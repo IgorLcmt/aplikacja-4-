@@ -38,12 +38,22 @@ def load_database() -> tuple[pd.DataFrame, list]:
         if val_col in df.columns:
             df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
 
-        raw_industries = df["Primary Industry"].dropna().unique().tolist()
+        industry_candidates = df["Primary Industry"].dropna().astype(str).tolist()
+
+        # Use only strings that are alphabetic and reasonably short
         cleaned = []
-        for entry in raw_industries:
-            match = re.search(r"\((.*?)\)", str(entry))
+        for entry in industry_candidates:
+            # Try extracting from parenthesis first
+            match = re.search(r"\((.*?)\)", entry)
             if match:
-                cleaned.append(match.group(1).strip())
+                value = match.group(1).strip()
+            else:
+                value = entry.strip()
+        
+            # Filter out numbers, codes, junk
+            if value and value.isalpha() and len(value) <= 40:
+                cleaned.append(value)
+        
         industry_list = sorted(set(cleaned))
 
         return df, industry_list

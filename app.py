@@ -179,7 +179,14 @@ def main():
             return
 
         with st.spinner("Analyzing profile..."):
+            st.info(f"Detected primary industry: **{detected_industry}**")
             from difflib import get_close_matches
+            detected_industry = detect_industry_from_text(query_text, client)
+
+            # Start filtering by the detected industry
+            initial_filter = df["Primary Industry"].str.contains(detected_industry, case=False, na=False)
+            
+            # If manual industries are also selected, apply fuzzy matching on top
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 fuzzy_matches = []
@@ -187,13 +194,16 @@ def main():
                     matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
                     fuzzy_matches.extend(matches)
                 if fuzzy_matches:
-                    df = df[df["Primary Industry"].isin(fuzzy_matches)].copy()
+                    manual_filter = df["Primary Industry"].isin(fuzzy_matches)
+                    combined_filter = initial_filter | manual_filter  # Union of detected + manual
                 else:
                     st.warning("No fuzzy matches found.")
-                detected_industry = ", ".join(manual_industries)
+                    combined_filter = initial_filter
             else:
-                detected_industry = detect_industry_from_text(query_text, client)
-                df = df[df["Primary Industry"].str.contains(detected_industry, case=False, na=False)]
+                combined_filter = initial_filter
+            
+            df = df[combined_filter].copy()
+
 
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &

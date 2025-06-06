@@ -251,7 +251,9 @@ def main():
             st.download_button("⬇️ Download Excel", data=output.getvalue(), file_name="Company_Matches.xlsx")
         with col2:
             if st.button("🔄 Find New Matches"):
-                st.session_state.generate_new = True
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.cache_data.clear()
                 st.rerun()
 
 if __name__ == "__main__":

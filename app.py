@@ -269,7 +269,8 @@ def main():
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
-
+            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
+            
             explanations = [
                 explain_match(query_text, desc, client)
                 for desc in df_top["Business Description"]
@@ -277,6 +278,12 @@ def main():
             df_top["Similarity Score"] = scores[top_indices]
             df_top["Explanation"] = explanations
             df_top = df_top.sort_values("Similarity Score", ascending=False)
+            if manual_industries or use_detected_also:
+                valid_industries = set(matching_industries + fuzzy_matches)
+                df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
+            
+                if df_top.empty:
+        st.warning("No top matches aligned with selected industries. Try relaxing filters.")
             st.session_state.results = df_top
             st.session_state.generate_new = False
 

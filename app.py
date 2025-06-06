@@ -229,27 +229,27 @@ def main():
                 # Require confirmation before continuing
                 description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
 
-if not description_confirmed:
-    st.warning("Please confirm the company description before proceeding.")
-    return
-
-with st.spinner("Analyzing profile..."):
-    from difflib import get_close_matches
-    detected_industry = detect_industry_from_text(query_text, client)
-    st.info(f"Detected primary industry: **{detected_industry}**")
-
-    industry_embeddings_batch = embed_text_batch([detected_industry], client)
-    if not industry_embeddings_batch:
-        st.error("Industry embedding failed.")
-        st.stop()
-    industry_embeddings = industry_embeddings_batch[0]
-
-    unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-    industry_to_embed = []
-    for i in unique_industries:
-        match = re.search(r"\((.*?)\)", i)
-        cleaned = match.group(1) if match else i
-        industry_to_embed.append(cleaned.strip())
+                if not description_confirmed:
+                    st.warning("Please confirm the company description before proceeding.")
+                    return
+                
+                with st.spinner("Analyzing profile..."):
+                    from difflib import get_close_matches
+                    detected_industry = detect_industry_from_text(query_text, client)
+                    st.info(f"Detected primary industry: **{detected_industry}**")
+                
+                    industry_embeddings_batch = embed_text_batch([detected_industry], client)
+                    if not industry_embeddings_batch:
+                        st.error("Industry embedding failed.")
+                        st.stop()
+                    industry_embeddings = industry_embeddings_batch[0]
+                
+                    unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+                    industry_to_embed = []
+                    for i in unique_industries:
+                        match = re.search(r"\((.*?)\)", i)
+                        cleaned = match.group(1) if match else i
+                        industry_to_embed.append(cleaned.strip())
 
             embedded_db_industries = embed_text_batch(industry_to_embed, client)
             industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()

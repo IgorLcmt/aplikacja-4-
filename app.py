@@ -283,7 +283,7 @@ def main():
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
             
                 if df_top.empty:
-        st.warning("No top matches aligned with selected industries. Try relaxing filters.")
+            st.warning("No top matches aligned with selected industries. Try relaxing filters.")
             st.session_state.results = df_top
             st.session_state.generate_new = False
 

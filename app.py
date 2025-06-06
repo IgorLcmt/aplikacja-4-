@@ -204,6 +204,7 @@ def main():
         if query_input and is_valid_url(query_input):
             with st.spinner("Scraping and summarizing website..."):
                 summarized = get_summarized_website(query_input, client)
+                st.write("Website Summary:", summarized)
         
                 if summarized:
                     summarized = st.text_area(

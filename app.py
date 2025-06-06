@@ -221,13 +221,13 @@ def main():
                     query_text = manual_description.strip()
                 elif summarized:
                     query_text = summarized
-                else:
-                    query_text = ""
-                
-                # Validation
+        
                 if not query_text.strip():
                     st.error("Please enter a valid input.")
                     return
+        
+                # Require confirmation before continuing
+                description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
 
 if not description_confirmed:
     st.warning("Please confirm the company description before proceeding.")

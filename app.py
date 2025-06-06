@@ -166,6 +166,8 @@ def main():
         min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)
         max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
         manual_industries = st.multiselect("🏷️ Filter by industry (optional):", options=industry_list)
+        use_detected_also = st.checkbox("Include detected industry in filtering", value=False)
+        
         if st.button("🔍 Find Matches"):
             st.session_state.generate_new = True
             st.rerun()
@@ -224,21 +226,29 @@ def main():
             matching_industries = [unique_industries[i] for i in top_indices]
             initial_filter = df["Primary Industry"].isin(matching_industries)
             
-            # If manual industries are also selected, apply fuzzy matching on top
+            # Manual filter logic first
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 fuzzy_matches = []
                 for selected in manual_industries:
                     matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
                     fuzzy_matches.extend(matches)
+            
                 if fuzzy_matches:
                     manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                    combined_filter = initial_filter | manual_filter  # Union of detected + manual
+                    
+                    if use_detected_also:
+                        combined_filter = manual_filter | initial_filter  # combine manual + detected
+                        st.info(f"Filtered by manually selected + detected industries ({len(fuzzy_matches)} manual matches).")
+                    else:
+                        combined_filter = manual_filter  # manual only
+                        st.info(f"Filtered by manually selected industries only ({len(fuzzy_matches)} matches).")
                 else:
-                    st.warning("No fuzzy matches found.")
+                    st.warning("Manual industry match failed — falling back to detected.")
                     combined_filter = initial_filter
             else:
                 combined_filter = initial_filter
+                st.info("Filtered by AI-detected industry only.")
             
             df = df[combined_filter].copy()
 

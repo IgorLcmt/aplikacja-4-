@@ -50,7 +50,7 @@ def load_database() -> tuple[pd.DataFrame, list]:
                 value = match.group(1).strip()
             else:
                 value = entry.strip()
-            if value and any(c.isalpha() for c in value) and len(value) <= 100:
+            if value and any(c.isalpha() for c in value) and len(value) <= 157:
                 cleaned.append(value)
 
         industry_list = sorted(set(cleaned))

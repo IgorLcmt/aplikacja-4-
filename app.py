@@ -51,7 +51,7 @@ def load_database() -> tuple[pd.DataFrame, list]:
                 value = entry.strip()
         
             # Filter out numbers, codes, junk
-            if value and value.isalpha() and len(value) <= 40:
+            if value and any(c.isalpha() for c in value) and len(value) <= 100:
                 cleaned.append(value)
         
         industry_list = sorted(set(cleaned))

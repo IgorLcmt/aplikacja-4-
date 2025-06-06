@@ -83,15 +83,20 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
         return ""
 
 def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
-    return gpt_chat(
-        "You are a business analyst evaluating company fit for strategic transactions.",
-        f"""
-Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
+      return gpt_chat(
+        "You are a business analyst evaluating similarity of companies. Be critical while explaning, don't try to force match.",
+        f"""Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
 
-Query:
+Focus on:
+1. Industry
+2. Product or service type
+3. Sales channels
+4. Customer segments
+
+Query Profile:
 {query}
 
-Company:
+Company Description:
 {company_desc}
         """,
         client

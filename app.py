@@ -200,8 +200,16 @@ def main():
         if query_input and is_valid_url(query_input):
             with st.spinner("Scraping and summarizing website..."):
                 summarized = get_summarized_website(query_input, client)
+        
                 if summarized:
+                    summarized = st.text_area(
+                        "📝 Website Summary (you can edit it before matching):",
+                        summarized,
+                        height=250
+                    )
                     query_text += summarized
+                else:
+                    st.warning("Could not extract usable content from the website.")
 
         if manual_description:
             query_text = manual_description.strip() + "\n" + query_text
@@ -246,7 +254,7 @@ def main():
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 fuzzy_matches = []
                 for selected in manual_industries:
-                    matches = get_close_matches(f"({selected})", raw_industries, n=20, cutoff=0.6)
+                    matches = get_close_matches(selected, raw_industries, n=20, cutoff=0.6)
                     fuzzy_matches.extend(matches)
             
                 if fuzzy_matches:
@@ -300,8 +308,8 @@ def main():
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
                 
-                st.session_state.results = df_top
-                st.session_state.generate_new = False
+                    st.session_state.results = df_top
+                    st.session_state.generate_new = False
 
     # Output
     if st.session_state.results is not None:

@@ -121,11 +121,14 @@ def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     )
     
 @st.cache_data(show_spinner="Fetching and summarizing website...")
+def scrape_website_cached(url: str) -> str:
+    return scrape_website(url)
+
 def get_summarized_website(url: str, client: OpenAI) -> str:
-    scraped = scrape_website(url)
+    scraped = scrape_website_cached(url)
     if scraped:
         return summarize_scraped_text(scraped, client)
-    return ""
+    return "
     
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)

@@ -255,8 +255,19 @@ def main():
 
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]
+
+            # 🔼 Add this block here to adjust score based on industry match
+            INDUSTRY_BOOST = 0.10  # You can tune this value
+            df_top["Adjusted Score"] = df_top.apply(
+                lambda row: row["Similarity Score"] + INDUSTRY_BOOST
+                if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
+                axis=1
+            )
+            
+            # ✅ Now sort based on adjusted score
+            df_top = df_top.sort_values("Adjusted Score", ascending=False)
             df_top["Explanation"] = explanations
-            df_top = df_top.sort_values("Similarity Score", ascending=False)
+      
 
             if manual_industries or use_detected_also:
                 valid_industries = set(matching_industries + fuzzy_matches)

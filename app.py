@@ -111,7 +111,20 @@ Company Description:
         """,
         client
     )
-
+    
+def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
+    return gpt_chat(
+        "Summarize the following website content. Focus on identifying the company's industry, core products or services, and main customer types.",
+        raw_text, client
+    )
+    
+@st.cache_data(show_spinner="Fetching and summarizing website...")
+def get_summarized_website(url: str, client: OpenAI) -> str:
+    scraped = scrape_website(url)
+    if scraped:
+        return summarize_scraped_text(scraped, client)
+    return ""
+    
 def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
     return [line.strip("-• ") for line in response.splitlines() if line.strip()]
@@ -129,10 +142,16 @@ def scrape_website(url: str) -> str:
     if not is_valid_url(url):
         return ""
     try:
-        time.sleep(RATE_LIMIT_DELAY)
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.text, "html.parser")
-        return soup.get_text(separator=" ", strip=True)[:MAX_TEXT_LENGTH]
+        downloaded = trafilatura.fetch_url(url)
+        if not downloaded:
+            return ""
+        result = trafilatura.extract(
+            downloaded,
+            include_comments=False,
+            include_tables=False,
+            no_fallback=True
+        )
+        return result[:MAX_TEXT_LENGTH] if result else ""
     except Exception:
         return ""
 
@@ -183,10 +202,10 @@ def main():
     if st.session_state.generate_new:
         query_text = ""
         if query_input and is_valid_url(query_input):
-            with st.spinner("Scraping website..."):
-                scraped = scrape_website(query_input)
-                if scraped:
-                    query_text += scraped
+            with st.spinner("Scraping and summarizing website..."):
+                summarized = get_summarized_website(query_input, client)
+                if summarized:
+                    query_text += summarized
 
         if manual_description:
             query_text = manual_description.strip() + "\n" + query_text

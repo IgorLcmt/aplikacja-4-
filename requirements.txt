@@ -8,4 +8,3 @@ scikit-learn>=1.2.2
 tiktoken>=0.5.1
 openpyxl>=3.1.2
 xlsxwriter>=3.1.2
-charset-normalizer==3.3.2

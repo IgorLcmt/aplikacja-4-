@@ -256,6 +256,8 @@ def main():
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]
 
+            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
+
             # 🔼 Add this block here to adjust score based on industry match
             INDUSTRY_BOOST = 0.10  # You can tune this value
             df_top["Adjusted Score"] = df_top.apply(

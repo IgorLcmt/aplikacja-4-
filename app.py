@@ -184,9 +184,9 @@ def main():
             return
 
         with st.spinner("Analyzing profile..."):
-            st.info(f"Detected primary industry: **{detected_industry}**")
             from difflib import get_close_matches
             detected_industry = detect_industry_from_text(query_text, client)
+            st.info(f"Detected primary industry: **{detected_industry}**")
 
             # Start filtering by the detected industry
             initial_filter = df["Primary Industry"].str.contains(detected_industry, case=False, na=False)

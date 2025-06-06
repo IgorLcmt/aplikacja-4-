@@ -233,7 +233,7 @@ if not description_confirmed:
     st.warning("Please confirm the company description before proceeding.")
     return
 
-            with st.spinner("Analyzing profile..."):
+    with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
             detected_industry = detect_industry_from_text(query_text, client)
             st.info(f"Detected primary industry: **{detected_industry}**")

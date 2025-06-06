@@ -208,11 +208,14 @@ def main():
             # Prepare embeddings of unique database industries
             unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
             industry_to_embed = []
+            
             for i in unique_industries:
                 match = re.search(r"\((.*?)\)", i)
                 cleaned = match.group(1) if match else i
                 industry_to_embed.append(cleaned.strip())
-                        embedded_db_industries = embed_text_batch(industry_to_embed, client)
+
+            # Now out of the loop:
+            embedded_db_industries = embed_text_batch(industry_to_embed, client)
             
             # Compute similarity scores
             industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()

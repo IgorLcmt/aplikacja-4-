@@ -11,7 +11,8 @@ import tiktoken
 import io
 import re
 import time
-from newspaper import Article
+from bs4 import BeautifulSoup
+import requests
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
@@ -144,10 +145,10 @@ def scrape_website(url: str) -> str:
     if not is_valid_url(url):
         return ""
     try:
-        article = Article(url)
-        article.download()
-        article.parse()
-        return article.text[:MAX_TEXT_LENGTH]
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        text = soup.get_text(separator=" ", strip=True)
+        return text[:MAX_TEXT_LENGTH]
     except Exception:
         return ""
 

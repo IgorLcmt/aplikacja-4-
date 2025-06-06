@@ -198,8 +198,28 @@ def main():
             detected_industry = detect_industry_from_text(query_text, client)
             st.info(f"Detected primary industry: **{detected_industry}**")
 
-            # Start filtering by the detected industry
-            initial_filter = df["Primary Industry"].str.contains(detected_industry, case=False, na=False)
+            # Embed detected industry
+            industry_embeddings_batch = embed_text_batch([detected_industry], client)
+            if not industry_embeddings_batch:
+                st.error("Industry embedding failed.")
+                st.stop()
+            industry_embeddings = industry_embeddings_batch[0]
+            
+            # Prepare embeddings of unique database industries
+            unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+            industry_to_embed = []
+            for i in unique_industries:
+                match = re.search(r"\((.*?)\)", i)
+                cleaned = match.group(1) if match else i
+                industry_to_embed.append(cleaned.strip())
+                        embedded_db_industries = embed_text_batch(industry_to_embed, client)
+            
+            # Compute similarity scores
+            industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
+            top_indices = np.where(industry_scores > 0.75)[0]  # adjust threshold as needed
+            
+            matching_industries = [unique_industries[i] for i in top_indices]
+            initial_filter = df["Primary Industry"].isin(matching_industries)
             
             # If manual industries are also selected, apply fuzzy matching on top
             if manual_industries:

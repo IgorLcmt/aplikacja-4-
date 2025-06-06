@@ -207,23 +207,31 @@ def main():
                         summarized,
                         height=250
                     )
-                    query_text += summarized
+                
+                    # Confirm checkbox
+                    description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
+                
                 else:
                     st.warning("Could not extract usable content from the website.")
+                
+                # Combine input sources correctly
+                if manual_description and summarized:
+                    query_text = manual_description.strip() + "\n" + summarized
+                elif manual_description:
+                    query_text = manual_description.strip()
+                elif summarized:
+                    query_text = summarized
+                else:
+                    query_text = ""
+                
+                # Validation
+                if not query_text.strip():
+                    st.error("Please enter a valid input.")
+                    return
 
-        if manual_description:
-            query_text = manual_description.strip() + "\n" + query_text
-
-        if not query_text.strip():
-            st.error("Please enter a valid input.")
-            return
-        
-        # Require confirmation before continuing
-        description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
-        
-        if not description_confirmed:
-            st.warning("Please confirm the company description before proceeding.")
-            return
+if not description_confirmed:
+    st.warning("Please confirm the company description before proceeding.")
+    return
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches

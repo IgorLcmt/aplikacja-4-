@@ -206,11 +206,6 @@ def main():
             st.error("Please enter a valid input.")
             return
 
-        description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
-        if not description_confirmed:
-            st.warning("Please confirm the company description before proceeding.")
-            return
-        
         # ✅ Build the full query_text using manual description and edited summary
         query_text = ""
         if manual_description.strip():

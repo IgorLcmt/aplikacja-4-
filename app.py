@@ -299,7 +299,7 @@ def main():
             df_top = df_top.sort_values("Adjusted Score", ascending=False)
             df_top["Explanation"] = explanations
             def count_no_answers(explanation: str) -> int:
-                return len(re.findall(r"\*\*.*?:\*\* NO", explanation, re.IGNORECASE))
+                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
 
             # ⛔️ Hard filter (remove poor matches)

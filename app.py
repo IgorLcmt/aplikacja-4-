@@ -262,13 +262,6 @@ def main():
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
-
-            EQUITY_COL = "Equity acquired (%)"  # This must match your cleaned Excel column name exactly
-
-            if EQUITY_COL not in df_top.columns:
-                st.warning(f'"{EQUITY_COL}" column is missing from the result data. Check your Excel column name or that it has non-empty values.')
-            else:
-                df_top[EQUITY_COL] = df_top[EQUITY_COL].fillna("N/A")
                 
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]

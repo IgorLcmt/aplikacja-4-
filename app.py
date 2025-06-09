@@ -312,7 +312,7 @@ def main():
             )
       
             if manual_industries or use_detected_also:
-                valid_industries = set(matching_industries + fuzzy_matches)
+                valid_industries = set(close_matches + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")

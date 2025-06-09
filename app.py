@@ -32,8 +32,8 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-        df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
-
+        df.columns = [re.sub(r'\s+', ' ', col).strip() for col in df.columns]
+        
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:
             df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
@@ -263,11 +263,13 @@ def main():
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
 
-            if "Equity acquired" not in df_top.columns:
-                st.warning('"Equity acquired (%)   " column is missing from the result data. Check your Excel column name or that it has non-empty values.')
-            else:
-                df_top["Equity acquired (%)   "] = df_top["Equity acquired (%)   "].fillna("N/A")
+            EQUITY_COL = "Equity acquired (%)"  # This must match your cleaned Excel column name exactly
 
+            if EQUITY_COL not in df_top.columns:
+                st.warning(f'"{EQUITY_COL}" column is missing from the result data. Check your Excel column name or that it has non-empty values.')
+            else:
+                df_top[EQUITY_COL] = df_top[EQUITY_COL].fillna("N/A")
+                
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]
 

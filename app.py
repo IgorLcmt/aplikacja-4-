@@ -48,6 +48,7 @@ def load_database() -> tuple[pd.DataFrame, list]:
                 cleaned.append(value)
 
         industry_list = sorted(set(cleaned))
+        st.write("✅ Loaded columns:", df.columns.tolist())
         return df, industry_list
 
     except Exception as e:

@@ -194,7 +194,8 @@ def main():
                     st.session_state.edited_summary = st.text_area(
                         "📝 Website Summary (you can edit it before matching):",
                         value=st.session_state.edited_summary,
-                        height=250
+                        height=250,
+                        key="edited_summary_input"  # ✅ unique key added
                     )
 
                 else:

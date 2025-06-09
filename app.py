@@ -197,7 +197,6 @@ def main():
                         height=250
                     )
 
-query_text += st.session_state.edited_summary
                 else:
                     st.warning("Could not extract usable content from the website.")
         if manual_description:
@@ -210,6 +209,15 @@ query_text += st.session_state.edited_summary
         description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
         if not description_confirmed:
             st.warning("Please confirm the company description before proceeding.")
+            return
+        query_text = ""
+        if manual_description:
+            query_text += manual_description.strip() + "\n"
+        if st.session_state.get("edited_summary"):
+            query_text += st.session_state.edited_summary.strip()
+        
+        if not query_text.strip():
+            st.error("Please enter a valid input.")
             return
 
         with st.spinner("Analyzing profile..."):

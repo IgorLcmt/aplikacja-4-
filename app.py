@@ -242,7 +242,7 @@ def main():
             industry_embeddings = industry_embeddings_batch[0]
 
             unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            industry_to_embed = [re.search(r"\((.*?)\)", i).group(1) if re.search(r"\((.*?)\)", i) else i for i in unique_industries]
+            industry_to_embed = [i.split(",")[0].strip() for i in unique_industries]
             industry_to_embed = [i.strip() for i in industry_to_embed]
 
             embedded_db_industries = embed_text_batch(industry_to_embed, client)

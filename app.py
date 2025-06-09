@@ -281,7 +281,10 @@ def main():
                 for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
             ]
 
-            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
+            if "close_matches" in locals():
+                relevant_industries = set(close_matches + fuzzy_matches)
+            else:
+                relevant_industries = set(fuzzy_matches)
 
             # 🔼 Add this block here to adjust score based on industry match
             INDUSTRY_BOOST = 0.20

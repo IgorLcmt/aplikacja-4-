@@ -32,8 +32,8 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-        df.columns = [re.sub(r"\s+", " ", col).strip() for col in df.columns]
-        
+        df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
+
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:
             df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
@@ -262,7 +262,7 @@ def main():
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
-                
+
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]
 
@@ -279,7 +279,6 @@ def main():
             # ✅ Now sort based on adjusted score
             df_top = df_top.sort_values("Adjusted Score", ascending=False)
             df_top["Explanation"] = explanations
-            
       
 
             if manual_industries or use_detected_also:

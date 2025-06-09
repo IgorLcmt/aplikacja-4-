@@ -99,7 +99,7 @@ Evaluate the match using YES/NO answers with short factual justification across 
 1. **Industry** – Are the companies in the same or highly similar industries?
 2. **Product/Service Type** – Do they offer comparable products or services?
 3. **Customer Segment** – Do they serve the same buyer types (e.g., retail, industrial, B2B)?
-4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors)?
+4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors, or both service providers)?
 5. **Geography** – Do they operate in the same or similar markets?
 6. **Company Size** – Are they of comparable size based on valuation or scale (if available)?
 

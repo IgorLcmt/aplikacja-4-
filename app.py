@@ -54,6 +54,8 @@ def load_database() -> tuple[pd.DataFrame, list]:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
 
+    st.write("All columns:", df.columns.tolist())
+
 # ===== TEXT UTILS =====
 def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     encoding = tiktoken.get_encoding(encoding_name)

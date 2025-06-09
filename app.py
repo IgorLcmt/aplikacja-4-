@@ -295,8 +295,15 @@ def main():
                 return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
             
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
+
+            # Adjusted Score
+            INDUSTRY_BOOST = 0.20
+            df_top["Adjusted Score"] = df_top.apply(
+                lambda row: row["Similarity Score"] + INDUSTRY_BOOST
+                if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
+                axis=1
+            )
             
-            # Apply penalty and calculate hybrid score
             NO_PENALTY = 0.05
             df_top["Hybrid Score"] = df_top.apply(
                 lambda row: row["Adjusted Score"] - (row["NO Count"] * NO_PENALTY),

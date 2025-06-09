@@ -232,36 +232,32 @@ def main():
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
+        
             detected_industry = detect_industry_from_text(query_text, client)
             st.info(f"Detected primary industry: **{detected_industry}**")
-
-            industry_embeddings_batch = embed_text_batch([detected_industry], client)
-            if not industry_embeddings_batch:
-                st.error("Industry embedding failed.")
-                st.stop()
-            industry_embeddings = industry_embeddings_batch[0]
-
-            unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            industry_to_embed = [i.split(",")[0].strip() for i in unique_industries]
-            industry_to_embed = [i.strip() for i in industry_to_embed]
-
-            embedded_db_industries = embed_text_batch(industry_to_embed, client)
-            industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
-            top_indices = np.where(industry_scores > 0.80)[0]
-            matching_industries = [unique_industries[i] for i in top_indices]
-            initial_filter = df["Primary Industry"].isin(matching_industries)
-
+        
+            # Match the detected industry to actual labels in your dataset
+            all_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+            close_matches = get_close_matches(detected_industry, all_industries, n=3, cutoff=0.75)
+        
+            if not close_matches:
+                st.warning("No close industry matches found. Using all industries.")
+                combined_filter = df["Primary Industry"] != ""
+            else:
+                matched_industries = close_matches
+                st.write(f"Using matched industry filter: {matched_industries}")
+                combined_filter = df["Primary Industry"].isin(matched_industries)
+        
+            # Optional: Manual override from sidebar
             fuzzy_matches = []
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
                 manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                combined_filter = manual_filter  # ❗️Only use manual selection
-            else:
-                combined_filter = initial_filter
+                combined_filter = manual_filter  # Manual overrides everything
 
-            df = df[combined_filter].copy()
+            combined_filter = pd.Series([True] * len(df), index=df.index)
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                 (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)

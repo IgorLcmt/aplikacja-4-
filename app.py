@@ -286,14 +286,33 @@ def main():
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
 
             INDUSTRY_BOOST = 0.20
-            df_top["Adjusted Score"] = df_top.apply(
-                lambda row: row["Similarity Score"] + INDUSTRY_BOOST
-                if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
+            NO_PENALTY = 0.05
+
+            df_top["Explanation"] = explanations
+
+            # Compute NO Count from GPT explanation
+            def count_no_answers(explanation: str) -> int:
+                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
+            
+            df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
+            
+            # Apply penalty and calculate hybrid score
+            NO_PENALTY = 0.05
+            df_top["Hybrid Score"] = df_top.apply(
+                lambda row: row["Adjusted Score"] - (row["NO Count"] * NO_PENALTY),
                 axis=1
             )
             
-            df_top = df_top.sort_values("Adjusted Score", ascending=False)
-            df_top["Explanation"] = explanations
+            # Optional hard filter (remove extreme mismatches)
+            df_top = df_top[df_top["NO Count"] <= 4]
+            
+            # Label matches for UI
+            df_top["Match Verdict"] = df_top["NO Count"].apply(
+                lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
+            )
+            
+            # Sort by hybrid score
+            df_top = df_top.sort_values("Hybrid Score", ascending=False)
 
             def count_no_answers(explanation: str) -> int:
                 return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))

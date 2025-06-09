@@ -124,7 +124,7 @@ Company Description:
     """
     
     if role:
-    prompt += f"\n\nNOTE: The target company operates as a **{role.lower()}**. Evaluate whether the company below matches the same business role. Be strict when the role differs."
+        prompt += f"\n\nNOTE: The target company operates as a **{role.lower()}**. Evaluate whether the company below matches the same business role. Be strict when the role differs."
 
 
     return gpt_chat("You are a critical business analyst.", prompt, client)

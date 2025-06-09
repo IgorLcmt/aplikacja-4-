@@ -210,12 +210,17 @@ def main():
         if not description_confirmed:
             st.warning("Please confirm the company description before proceeding.")
             return
-        query_text = ""
-        if manual_description:
-            query_text += manual_description.strip() + "\n"
-        if st.session_state.get("edited_summary"):
-            query_text += st.session_state.edited_summary.strip()
         
+        # ✅ Build the full query_text using manual description and edited summary
+        query_text = ""
+        if manual_description.strip():
+            query_text += manual_description.strip() + "\n"
+        
+        edited_summary = st.session_state.get("edited_summary", "").strip()
+        if edited_summary:
+            query_text += edited_summary
+        
+        # ✅ Final check to ensure we have valid input
         if not query_text.strip():
             st.error("Please enter a valid input.")
             return

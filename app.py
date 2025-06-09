@@ -86,25 +86,41 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     except Exception:
         return ""
 
-def explain_match(query: str, company_desc: str, client: OpenAI) -> str:
-    return gpt_chat(
-        "You are a business analyst and your task is to find the most accurate match of companies. Chcek if Naics code is simmilar. Be critical while explaining, don't try to force match.",
-        f"""Based on the provided business description and the target profile, explain in 3–5 bullet points why this transaction is a good match.
+def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI) -> str:
+    prompt = f"""
+You are a critical business analyst. Your task is to evaluate whether a transaction is a good match based on four key dimensions.
 
-Focus on:
-1. Industry
-2. Product or service type
-3. Sales channels
-4. Customer segments
+Start by considering the SIMILARITY SCORE, which is a float between 0 and 1.
+Be skeptical if the score is low (< 0.6). Avoid forcing a match — it's okay to say it's weak.
+
+SIMILARITY SCORE: {similarity_score:.2f}
+
+Now assess the following, using a YES/NO answer and one-line justification:
+
+1. **Industry match**: Do the industries clearly overlap?
+2. **Product/service similarity**: Are the products or services comparable in type or use?
+3. **Sales channel alignment**: Do they sell in similar ways (e.g., B2B SaaS, e-commerce)?
+4. **Customer segment alignment**: Do they target similar customer types (e.g., enterprises, consumers, healthcare)?
+
+Respond in this format exactly:
+
+---
+**Similarity Score**: X.XX  
+**Industry Match**: YES/NO – Reason  
+**Product/Service Similarity**: YES/NO – Reason  
+**Sales Channel Alignment**: YES/NO – Reason  
+**Customer Segment Match**: YES/NO – Reason  
+**Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Short reason
+---
 
 Query Profile:
 {query}
 
 Company Description:
 {company_desc}
-        """,
-        client
-    )
+    """
+
+    return gpt_chat("You are a critical business analyst.", prompt, client)
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     return gpt_chat(
@@ -263,7 +279,10 @@ def main():
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
 
-            explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
+            explanations = [
+                explain_match_structured(query_text, desc, score, client)
+                for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
+            ]
             df_top["Similarity Score"] = scores[top_indices]
 
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)

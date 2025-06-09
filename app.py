@@ -238,7 +238,10 @@ def main():
         
             # Match the detected industry to actual labels in your dataset
             all_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            close_matches = get_close_matches(detected_industry, all_industries, n=3, cutoff=0.75)
+            close_matches = [
+                industry for industry in all_industries
+                if industry.lower().startswith(detected_industry.lower())
+            ]
         
             if not close_matches:
                 st.warning("No close industry matches found. Using all industries.")

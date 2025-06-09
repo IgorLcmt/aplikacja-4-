@@ -88,7 +88,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
 
 def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI) -> str:
     prompt = f"""
-You are a critical business analyst. Your task is to evaluate whether a transaction is a good match based on four key dimensions.
+You are a critical business analyst. Your task is to evaluate whether two companies are a good match based on five key dimensions.
 
 Start by considering the SIMILARITY SCORE, which is a float between 0 and 1.
 Be skeptical if the score is low (< 0.6). Avoid forcing a match — it's okay to say it's weak.
@@ -97,12 +97,13 @@ SIMILARITY SCORE: {similarity_score:.2f}
 
 Now assess the following, using a YES/NO answer and one-line justification:
 
-1. **Industry match**: Do the industries clearly overlap?
-2. **Product/service similarity**: Are the products or services comparable in type or use?
-3. **Sales channel alignment**: Do they sell in similar ways (e.g., B2B SaaS, e-commerce)?
-4. **Customer segment alignment**: Do they target similar customer types (e.g., enterprises, consumers, healthcare)?
+1. **Industry Match**: Do the industries clearly overlap?
+2. **Product/Service Similarity**: Are the products or services comparable in type or use?
+3. **Sales Channel Alignment**: Do they sell in similar ways (e.g., B2B SaaS, e-commerce)?
+4. **Customer Segment Match**: Do they target similar customer types (e.g., enterprises, consumers, healthcare)?
+5. **Business Role Compatibility**: Is the business role similar or complementary (e.g., distributor vs. manufacturer vs. service provider)? 
 
-Respond in this format exactly:
+Respond in this exact format:
 
 ---
 **Similarity Score**: X.XX  
@@ -110,6 +111,7 @@ Respond in this format exactly:
 **Product/Service Similarity**: YES/NO – Reason  
 **Sales Channel Alignment**: YES/NO – Reason  
 **Customer Segment Match**: YES/NO – Reason  
+**Business Role Compatibility**: YES/NO – Reason  
 **Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Short reason
 ---
 

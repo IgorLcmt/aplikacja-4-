@@ -165,7 +165,6 @@ def main():
     # Sidebar
     with st.sidebar:
         query_input = st.text_input("🌐 Company website (optional):")
-        manual_description = st.text_area("📝 Company description (optional):")
         min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)
         max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
         manual_industries = st.multiselect("🏷️ Filter by industry (optional):", options=industry_list)
@@ -207,13 +206,9 @@ def main():
             return
     
         query_text = ""
-        if manual_description.strip():
-            query_text += manual_description.strip() + "\n"
-        if st.session_state.get("edited_summary", "").strip():
-            query_text += st.session_state.edited_summary.strip()
-    
-        if not query_text.strip():
-            st.error("Please enter a valid input.")
+        
+        if not query_text:
+            st.error("Please confirm or edit the company description above.")
             return
 
         with st.spinner("Analyzing profile..."):

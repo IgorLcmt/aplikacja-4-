@@ -338,6 +338,9 @@ def main():
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
 
+            if "Buyers/Investors" in df.columns:
+                df_top["Buyers/Investors"] = df.loc[df_top.index, "Buyers/Investors"]
+                
             st.session_state.results = df_top
             st.session_state.generate_new = False
 

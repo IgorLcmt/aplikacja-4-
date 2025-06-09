@@ -247,7 +247,7 @@ def main():
 
             embedded_db_industries = embed_text_batch(industry_to_embed, client)
             industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
-            top_indices = np.where(industry_scores > 0.75)[0]
+            top_indices = np.where(industry_scores > 0.80)[0]
             matching_industries = [unique_industries[i] for i in top_indices]
             initial_filter = df["Primary Industry"].isin(matching_industries)
 

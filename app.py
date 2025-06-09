@@ -303,10 +303,10 @@ def main():
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
 
             # ⛔️ Hard filter (remove poor matches)
-            df_top = df_top[df_top["NO Count"] <= 3]
+            df_top = df_top[df_top["NO Count"] <= 4]
 
             df_top["Match Verdict"] = df_top["NO Count"].apply(
-                lambda x: "❌ Poor Match" if x >= 3 else "✅ Relevant"
+                lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
             )
       
             if manual_industries or use_detected_also:

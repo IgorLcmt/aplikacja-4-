@@ -205,11 +205,14 @@ def main():
             st.warning("Please confirm the company description before proceeding.")
             return
     
-        query_text = ""
-        
+        query_text = st.session_state.get("edited_summary_input", "").strip()
+
         if not query_text:
             st.error("Please confirm or edit the company description above.")
             return
+        
+        # Save it back to session state (optional, for consistency)
+        st.session_state["edited_summary"] = query_text
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches

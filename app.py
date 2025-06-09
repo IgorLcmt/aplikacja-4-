@@ -298,6 +298,17 @@ def main():
             # ✅ Now sort based on adjusted score
             df_top = df_top.sort_values("Adjusted Score", ascending=False)
             df_top["Explanation"] = explanations
+              def count_no_answers(explanation: str) -> int:
+            return len(re.findall(r"\*\*.*?:\*\* NO", explanation, re.IGNORECASE))
+            df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
+
+            # ⛔️ Hard filter (remove poor matches)
+            df_top = df_top[df_top["NO Count"] <= 3]
+
+            df_top["Match Verdict"] = df_top["NO Count"].apply(
+                lambda x: "❌ Poor Match" if x >= 3 else "✅ Relevant"
+            )
+      
       
 
             if manual_industries or use_detected_also:

@@ -232,35 +232,36 @@ def main():
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
-        
             detected_industry = detect_industry_from_text(query_text, client)
             st.info(f"Detected primary industry: **{detected_industry}**")
-        
-            # Match the detected industry to actual labels in your dataset
-            all_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            close_matches = [
-                industry for industry in all_industries
-                if industry.lower().startswith(detected_industry.lower())
-            ]
-        
-            if not close_matches:
-                st.warning("No close industry matches found. Using all industries.")
-                combined_filter = df["Primary Industry"] != ""
-            else:
-                matched_industries = close_matches
-                st.write(f"Using matched industry filter: {matched_industries}")
-                combined_filter = df["Primary Industry"].isin(matched_industries)
-        
-            # Optional: Manual override from sidebar
+
+            industry_embeddings_batch = embed_text_batch([detected_industry], client)
+            if not industry_embeddings_batch:
+                st.error("Industry embedding failed.")
+                st.stop()
+            industry_embeddings = industry_embeddings_batch[0]
+
+            unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+            industry_to_embed = [re.search(r"\((.*?)\)", i).group(1) if re.search(r"\((.*?)\)", i) else i for i in unique_industries]
+            industry_to_embed = [i.strip() for i in industry_to_embed]
+
+            embedded_db_industries = embed_text_batch(industry_to_embed, client)
+            industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
+            top_indices = np.where(industry_scores > 0.75)[0]
+            matching_industries = [unique_industries[i] for i in top_indices]
+            initial_filter = df["Primary Industry"].isin(matching_industries)
+
             fuzzy_matches = []
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
                 manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                combined_filter = manual_filter  # Manual overrides everything
+                combined_filter = manual_filter  # ❗️Only use manual selection
+            else:
+                combined_filter = initial_filter if use_detected_also else df["Primary Industry"] != ""  # fallback
 
-            combined_filter = pd.Series([True] * len(df), index=df.index)
+            df = df[combined_filter].copy()
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                 (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)
@@ -284,13 +285,10 @@ def main():
                 for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
             ]
 
-            if "close_matches" in locals():
-                relevant_industries = set(close_matches + fuzzy_matches)
-            else:
-                relevant_industries = set(fuzzy_matches)
+            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
 
             # 🔼 Add this block here to adjust score based on industry match
-            INDUSTRY_BOOST = 0.20
+            INDUSTRY_BOOST = 0.10  # You can tune this value
             df_top["Adjusted Score"] = df_top.apply(
                 lambda row: row["Similarity Score"] + INDUSTRY_BOOST
                 if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
@@ -300,19 +298,10 @@ def main():
             # ✅ Now sort based on adjusted score
             df_top = df_top.sort_values("Adjusted Score", ascending=False)
             df_top["Explanation"] = explanations
-            def count_no_answers(explanation: str) -> int:
-                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
-            df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
-
-            # ⛔️ Hard filter (remove poor matches)
-            df_top = df_top[df_top["NO Count"] <= 4]
-
-            df_top["Match Verdict"] = df_top["NO Count"].apply(
-                lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
-            )
       
+
             if manual_industries or use_detected_also:
-                valid_industries = set(close_matches + fuzzy_matches)
+                valid_industries = set(matching_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")

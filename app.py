@@ -199,13 +199,7 @@ def main():
 
                 else:
                     st.warning("Could not extract usable content from the website.")
-        if manual_description:
-            query_text = manual_description.strip() + "\n" + query_text
-
-        if not query_text.strip():
-            st.error("Please enter a valid input.")
-            return
-
+      
         # ✅ Build the full query_text using manual description and edited summary
         query_text = ""
         if manual_description.strip():

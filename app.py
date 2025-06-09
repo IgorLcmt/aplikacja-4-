@@ -278,12 +278,12 @@ def main():
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:20]
             df_top = df.iloc[top_indices].copy()
+            df_top["Similarity Score"] = scores[top_indices]
 
             explanations = [
                 explain_match_structured(query_text, desc, score, client)
                 for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
             ]
-            df_top["Similarity Score"] = scores[top_indices]
 
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
 

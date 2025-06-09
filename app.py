@@ -259,7 +259,7 @@ def main():
                 manual_filter = df["Primary Industry"].isin(fuzzy_matches)
                 combined_filter = manual_filter  # ❗️Only use manual selection
             else:
-                combined_filter = initial_filter if use_detected_also else df["Primary Industry"] != ""  # fallback
+                combined_filter = initial_filter
 
             df = df[combined_filter].copy()
             df = df[

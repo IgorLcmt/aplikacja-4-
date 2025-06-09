@@ -264,9 +264,9 @@ def main():
             df_top = df.iloc[top_indices].copy()
 
             if "Equity acquired" not in df_top.columns:
-                st.warning('"Equity acquired" column is missing from the result data. Check your Excel column name or that it has non-empty values.')
+                st.warning('"Equity acquired (%)   " column is missing from the result data. Check your Excel column name or that it has non-empty values.')
             else:
-                df_top["Equity acquired"] = df_top["Equity acquired"].fillna("N/A")
+                df_top["Equity acquired (%)   "] = df_top["Equity acquired (%)   "].fillna("N/A")
 
             explanations = [explain_match(query_text, desc, client) for desc in df_top["Business Description"]]
             df_top["Similarity Score"] = scores[top_indices]

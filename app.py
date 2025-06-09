@@ -231,9 +231,9 @@ def main():
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
                 manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                combined_filter = manual_filter | initial_filter if use_detected_also else manual_filter
+                combined_filter = manual_filter  # ❗️Only use manual selection
             else:
-                combined_filter = initial_filter
+                combined_filter = initial_filter if use_detected_also else df["Primary Industry"] != ""  # fallback
 
             df = df[combined_filter].copy()
             df = df[

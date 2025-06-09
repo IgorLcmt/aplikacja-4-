@@ -288,7 +288,7 @@ def main():
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
 
             # 🔼 Add this block here to adjust score based on industry match
-            INDUSTRY_BOOST = 0.10  # You can tune this value
+            INDUSTRY_BOOST = 0.20
             df_top["Adjusted Score"] = df_top.apply(
                 lambda row: row["Similarity Score"] + INDUSTRY_BOOST
                 if row["Primary Industry"] in relevant_industries else row["Similarity Score"],

@@ -32,7 +32,7 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-        df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
+        df.columns = [re.sub(r"\s+", " ", col).strip() for col in df.columns]
         
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:

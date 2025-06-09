@@ -86,7 +86,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     except Exception:
         return ""
 
-def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI) -> str:
+def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> str:
     prompt = f"""
 You are a valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
 
@@ -122,6 +122,10 @@ Query Profile:
 Company Description:
 {company_desc}
     """
+    
+    if role:
+    prompt += f"\n\nNOTE: The target company operates as a **{role.lower()}**. Evaluate whether the company below matches the same business role. Be strict when the role differs."
+
 
     return gpt_chat("You are a critical business analyst.", prompt, client)
 
@@ -188,6 +192,8 @@ def main():
         max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
         manual_industries = st.multiselect("🏷️ Filter by industry (optional):", options=industry_list)
         use_detected_also = st.checkbox("Include detected industry in filtering", value=False)
+        role_options = ["", "Manufacturer", "Distributor", "Service Provider"]
+        selected_role = st.selectbox("Business Role (optional):", role_options)
 
         if st.button("🔍 Find Matches"):
             st.session_state.generate_new = True
@@ -282,7 +288,7 @@ def main():
             df_top["Similarity Score"] = scores[top_indices]
 
             explanations = [
-                explain_match_structured(query_text, desc, score, client)
+                explain_match_structured(query_text, desc, score, client, selected_role)
                 for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
             ]
 

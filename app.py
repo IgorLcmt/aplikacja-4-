@@ -188,8 +188,16 @@ def main():
                 summarized = get_summarized_website(query_input, client)
                 st.write("Website Summary:", summarized)
                 if summarized:
-                    summarized = st.text_area("📝 Website Summary (you can edit it before matching):", summarized, height=250)
-                    query_text += summarized
+                    if "edited_summary" not in st.session_state:
+                        st.session_state.edited_summary = summarized
+                    
+                    st.session_state.edited_summary = st.text_area(
+                        "📝 Website Summary (you can edit it before matching):",
+                        value=st.session_state.edited_summary,
+                        height=250
+                    )
+
+query_text += st.session_state.edited_summary
                 else:
                     st.warning("Could not extract usable content from the website.")
         if manual_description:

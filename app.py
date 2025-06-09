@@ -88,31 +88,32 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
 
 def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI) -> str:
     prompt = f"""
-You are a critical business analyst. Your task is to evaluate whether two companies are a good match based on five key dimensions.
+You are a valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
 
-Start by considering the SIMILARITY SCORE, which is a float between 0 and 1.
-Be skeptical if the score is low (< 0.6). Avoid forcing a match — it's okay to say it's weak.
+Do NOT evaluate partnership or collaboration potential. Focus strictly on comparability.
 
 SIMILARITY SCORE: {similarity_score:.2f}
 
-Now assess the following, using a YES/NO answer and one-line justification:
+Evaluate the match using YES/NO answers with short factual justification across the following dimensions:
 
-1. **Industry Match**: Do the industries clearly overlap?
-2. **Product/Service Similarity**: Are the products or services comparable in type or use?
-3. **Sales Channel Alignment**: Do they sell in similar ways (e.g., B2B SaaS, e-commerce)?
-4. **Customer Segment Match**: Do they target similar customer types (e.g., enterprises, consumers, healthcare)?
-5. **Business Role Compatibility**: Is the business role similar or complementary (e.g., distributor vs. manufacturer vs. service provider)? 
+1. **Industry** – Are the companies in the same or highly similar industries?
+2. **Product/Service Type** – Do they offer comparable products or services?
+3. **Customer Segment** – Do they serve the same buyer types (e.g., retail, industrial, B2B)?
+4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors)?
+5. **Geography** – Do they operate in the same or similar markets?
+6. **Company Size** – Are they of comparable size based on valuation or scale (if available)?
 
-Respond in this exact format:
+Respond in this format:
 
 ---
 **Similarity Score**: X.XX  
-**Industry Match**: YES/NO – Reason  
-**Product/Service Similarity**: YES/NO – Reason  
-**Sales Channel Alignment**: YES/NO – Reason  
-**Customer Segment Match**: YES/NO – Reason  
-**Business Role Compatibility**: YES/NO – Reason  
-**Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Short reason
+**Industry Match**: YES/NO – Short reason  
+**Product/Service Match**: YES/NO – Short reason  
+**Customer Segment Match**: YES/NO – Short reason  
+**Business Role Match**: YES/NO – Short reason  
+**Geographic Match**: YES/NO – Short reason  
+**Size Match**: YES/NO – Short reason  
+**Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Keep it factual
 ---
 
 Query Profile:

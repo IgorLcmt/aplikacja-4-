@@ -274,7 +274,7 @@ def main():
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
             db_embeds = np.array(embed_text_batch(descriptions, client))
             scores = cosine_similarity(db_embeds, query_embed).flatten()
-            top_indices = np.argsort(-scores)[:20]
+            top_indices = np.argsort(-scores)[:40]
             df_top = df.iloc[top_indices].copy()
             df_top["Similarity Score"] = scores[top_indices]
 
@@ -319,7 +319,7 @@ def main():
             )
             
             # Sort by hybrid score
-            df_top = df_top.sort_values("Hybrid Score", ascending=False)
+            df_top = df_top.sort_values("Hybrid Score", ascending=False).head(20)
 
             def count_no_answers(explanation: str) -> int:
                 return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))

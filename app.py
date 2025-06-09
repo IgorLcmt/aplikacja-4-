@@ -202,6 +202,30 @@ def main():
       
         # ✅ Build the full query_text using manual description and edited summary
         query_text = ""
+        if query_input and is_valid_url(query_input):
+            with st.spinner("Scraping and summarizing website..."):
+                summarized = get_summarized_website(query_input, client)
+                st.write("Website Summary:", summarized)
+                if summarized:
+                    if "edited_summary" not in st.session_state:
+                        st.session_state.edited_summary = summarized
+                    
+                    st.session_state.edited_summary = st.text_area(
+                        "📝 Website Summary (you can edit it before matching):",
+                        value=st.session_state.edited_summary,
+                        height=250
+                    )
+                else:
+                    st.warning("Could not extract usable content from the website.")
+        
+        # STEP 2: Confirm before analysis
+        description_confirmed = st.checkbox("✅ I confirm the company description above is correct")
+        if not description_confirmed:
+            st.warning("Please confirm the company description before proceeding.")
+            return
+        
+        # STEP 3: Now build query_text
+        query_text = ""
         if manual_description.strip():
             query_text += manual_description.strip() + "\n"
         
@@ -209,7 +233,7 @@ def main():
         if edited_summary:
             query_text += edited_summary
         
-        # ✅ Final check to ensure we have valid input
+        # STEP 4: Validate final input
         if not query_text.strip():
             st.error("Please enter a valid input.")
             return

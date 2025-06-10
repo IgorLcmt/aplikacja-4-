@@ -204,7 +204,7 @@ def parallel_explanations(df, query_text, scores, client, role):
             executor.submit(
                 explain_match_structured,
                 query_text,
-                row["Business Description"],
+                row._asdict()["Business Description"],  # ✅ fixed
                 score,
                 client,
                 role

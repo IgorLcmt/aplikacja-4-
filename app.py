@@ -88,7 +88,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
 
 def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> str:
     prompt = f"""
-You are a valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
+You are a top tier valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
 
 Do NOT evaluate partnership or collaboration potential. Focus strictly on comparability.
 
@@ -100,8 +100,7 @@ Evaluate the match using YES/NO answers with short factual justification across 
 2. **Product/Service Type** – Do they offer comparable products or services?
 3. **Customer Segment** – Do they serve the same buyer types (e.g., retail, industrial, B2B)?
 4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors, or both service providers)?
-5. **Geography** – Do they operate in the same or similar markets?
-6. **Company Size** – Are they of comparable size based on valuation or scale (if available)?
+5. **Geography** – Do they operate in the same or similar markets? Priority Poland, then Europe, the USA and Canada 
 
 Respond in this format:
 
@@ -111,8 +110,7 @@ Respond in this format:
 **Product/Service Match**: YES/NO – Short reason  
 **Customer Segment Match**: YES/NO – Short reason  
 **Business Role Match**: YES/NO – Short reason  
-**Geographic Match**: YES/NO – Short reason  
-**Size Match**: YES/NO – Short reason  
+**Geographic Match**: YES/NO – Short reason    
 **Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Keep it factual
 ---
 
@@ -131,7 +129,7 @@ Company Description:
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     return gpt_chat(
-        "Summarize the following website content. Focus on identifying the company's industry, business model, Sales channels, core products or services, and main customer types. In description don't add name of the company.",
+        "Summarize the following website cont. Focus on identifying the company's industry, business model, Sales channels, core products or services, and main customer types. In description don't add name of the company.",
         raw_text, client
     )
 

@@ -187,7 +187,7 @@ def main():
 
     # Sidebar
     
-    st.sidebar.title("CedroBOT_1.1")
+    st.sidebar.title("Transaction Finder 💻")
     
     with st.sidebar:
         query_input = st.text_input("🌐 Company website (optional):")

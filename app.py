@@ -199,12 +199,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def parallel_explanations(df, query_text, scores, client, role):
     explanations = [""] * len(df)
+
+    first_row = next(df.itertuples(index=False))
+    desc_col = next((k for k in first_row._asdict().keys() if "business" in k.lower() and "description" in k.lower()), None)
+    if not desc_col:
+        raise KeyError("Could not locate 'Business Description' column")
+        
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_idx = {
             executor.submit(
                 explain_match_structured,
                 query_text,
-                row._asdict()["Business Description"],  # ✅ fixed
+                row._asdict()[desc_col]
                 score,
                 client,
                 role

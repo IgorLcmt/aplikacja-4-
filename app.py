@@ -11,6 +11,9 @@ import tiktoken
 import io
 import re
 import time
+import faiss
+import os
+import pickle
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
@@ -62,15 +65,29 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     tokens = encoding.encode(text)[:MAX_TOKENS]
     return encoding.decode(tokens)
 
-@st.cache_data
-def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
-    clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
-    embeddings = []
-    for i in range(0, len(clean_texts), BATCH_SIZE):
-        batch = clean_texts[i:i + BATCH_SIZE]
-        response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
-        embeddings.extend([record.embedding for record in response.data])
-    return embeddings
+VECTOR_DB_PATH = "app_data/vector_db.index"
+VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
+
+def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
+    dim = len(embeddings[0])
+    index = faiss.IndexFlatIP(dim)
+    index.add(np.array(embeddings, dtype=np.float32))
+
+    with open(VECTOR_MAPPING_PATH, "wb") as f:
+        pickle.dump(metadata, f)
+    faiss.write_index(index, VECTOR_DB_PATH)
+
+@st.cache_resource
+def load_vector_db():
+    index = faiss.read_index("app_data/vector_db.index")
+    with open("app_data/vector_mapping.pkl", "rb") as f:
+        metadata = pickle.load(f)
+    return index, metadata
+
+def search_vector_db(query_embedding, top_k=20):
+    index, metadata = load_vector_db()
+    scores, indices = index.search(np.array([query_embedding], dtype=np.float32), top_k)
+    return [(metadata[i], scores[0][idx]) for idx, i in enumerate(indices[0])]
 
 def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     try:
@@ -278,7 +295,7 @@ def main():
                 st.error("No companies match your filters.")
                 return
 
-            descriptions = df["Business Description"].astype(str).tolist()
+                        descriptions = df["Business Description"].astype(str).tolist()
             query_variants = [query_text] + paraphrase_query(query_text, client)
             query_embeds = np.array(embed_text_batch(query_variants, client))
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
@@ -288,59 +305,42 @@ def main():
             df_top = df.iloc[top_indices].copy()
             df_top["Similarity Score"] = scores[top_indices]
 
-            explanations = [
-                explain_match_structured(query_text, desc, score, client, selected_role)
-                for desc, score in zip(df_top["Business Description"], df_top["Similarity Score"])
-            ]
+            # ✅ Replaced sequential GPT calls with threaded executor
+            with st.spinner("Generating GPT-based similarity explanations..."):
+                explanations = parallel_explanations(
+                    df_top, query_text, df_top["Similarity Score"], client, selected_role
+                )
+            df_top["Explanation"] = explanations
 
+            # ✅ Compute hybrid scores
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
-
             INDUSTRY_BOOST = 0.20
             NO_PENALTY = 0.05
 
-            df_top["Explanation"] = explanations
-
-            # Compute NO Count from GPT explanation
             def count_no_answers(explanation: str) -> int:
                 return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
-            
+
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
 
-            # Adjusted Score
-            INDUSTRY_BOOST = 0.20
             df_top["Adjusted Score"] = df_top.apply(
                 lambda row: row["Similarity Score"] + INDUSTRY_BOOST
                 if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
                 axis=1
             )
-            
-            NO_PENALTY = 0.05
+
             df_top["Hybrid Score"] = df_top.apply(
                 lambda row: row["Adjusted Score"] - (row["NO Count"] * NO_PENALTY),
                 axis=1
             )
-            
-            # Optional hard filter (remove extreme mismatches)
+
             df_top = df_top[df_top["NO Count"] <= 4]
-            
-            # Label matches for UI
+
             df_top["Match Verdict"] = df_top["NO Count"].apply(
                 lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
             )
-            
-            # Sort by hybrid score
+
             df_top = df_top.sort_values("Hybrid Score", ascending=False).head(20)
 
-            def count_no_answers(explanation: str) -> int:
-                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
-            df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
-
-            df_top = df_top[df_top["NO Count"] <= 4]
-
-            df_top["Match Verdict"] = df_top["NO Count"].apply(
-                lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
-            )
-      
             if manual_industries or use_detected_also:
                 valid_industries = set(matching_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
@@ -349,7 +349,7 @@ def main():
 
             if "Buyers/Investors" in df.columns:
                 df_top["Buyers/Investors"] = df.loc[df_top.index, "Buyers/Investors"]
-                
+
             st.session_state.results = df_top
             st.session_state.generate_new = False
 

@@ -34,7 +34,10 @@ def init_openai(api_key: str) -> OpenAI:
 @st.cache_data(show_spinner="Loading database...")
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
+        # ✅ Corrected header
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
+
+        # ✅ Keep your cleaning logic
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)

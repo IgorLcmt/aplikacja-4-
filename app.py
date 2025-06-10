@@ -195,6 +195,29 @@ def get_top_indices(scores: np.ndarray, threshold: float) -> np.ndarray:
     qualified = scores >= threshold
     return np.argsort(-scores[qualified])
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def parallel_explanations(df, query_text, scores, client, role):
+    explanations = [""] * len(df)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_idx = {
+            executor.submit(
+                explain_match_structured,
+                query_text,
+                row["Business Description"],
+                score,
+                client,
+                role
+            ): idx for idx, (row, score) in enumerate(zip(df.itertuples(), scores))
+        }
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                explanations[idx] = future.result()
+            except Exception:
+                explanations[idx] = "Explanation failed"
+    return explanations
+
 # ===== MAIN APP =====
 def main():
     api_key = st.secrets.get("openai", {}).get("api_key")

@@ -65,6 +65,16 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     tokens = encoding.encode(text)[:MAX_TOKENS]
     return encoding.decode(tokens)
 
+@st.cache_data
+def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
+    clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
+    embeddings = []
+    for i in range(0, len(clean_texts), BATCH_SIZE):
+        batch = clean_texts[i:i + BATCH_SIZE]
+        response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
+        embeddings.extend([record.embedding for record in response.data])
+    return embeddings
+
 VECTOR_DB_PATH = "app_data/vector_db.index"
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 

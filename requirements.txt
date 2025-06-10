@@ -1,10 +1,10 @@
+streamlit
 pandas
 numpy
-streamlit
 requests
 beautifulsoup4
 openai
 scikit-learn
 tiktoken
+faiss-cpu
 openpyxl
-xlsxwriter

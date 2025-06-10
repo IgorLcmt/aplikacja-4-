@@ -210,7 +210,7 @@ def parallel_explanations(df, query_text, scores, client, role):
             executor.submit(
                 explain_match_structured,
                 query_text,
-                row._asdict()[desc_col]
+                row._asdict()[desc_col],
                 score,
                 client,
                 role

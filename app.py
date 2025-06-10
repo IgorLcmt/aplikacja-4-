@@ -186,6 +186,9 @@ def main():
     df, industry_list = load_database()
 
     # Sidebar
+    
+    st.sidebar.title("🔎 Transaction Finder")
+    
     with st.sidebar:
         query_input = st.text_input("🌐 Company website (optional):")
         min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)

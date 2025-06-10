@@ -36,6 +36,8 @@ def load_database() -> tuple[pd.DataFrame, list]:
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
+        df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.replace(r"\s+", " ", regex=True)
 
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:
@@ -201,6 +203,7 @@ def parallel_explanations(df, query_text, scores, client, role):
     explanations = [""] * len(df)
 
     first_row = next(df.itertuples(index=False))
+    st.write("Column names found:", list(first_row._asdict().keys()))
     desc_col = next((k for k in first_row._asdict().keys() if "business" in k.lower() and "description" in k.lower()), None)
     if not desc_col:
         raise KeyError("Could not locate 'Business Description' column")

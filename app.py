@@ -295,7 +295,7 @@ def main():
                 st.error("No companies match your filters.")
                 return
 
-                        descriptions = df["Business Description"].astype(str).tolist()
+            descriptions = df["Business Description"].astype(str).tolist()
             query_variants = [query_text] + paraphrase_query(query_text, client)
             query_embeds = np.array(embed_text_batch(query_variants, client))
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)

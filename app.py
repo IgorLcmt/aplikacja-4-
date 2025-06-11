@@ -202,23 +202,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 def parallel_explanations(df, query_text, scores, client, role):
     explanations = [""] * len(df)
 
-    first_row = next(df.itertuples(index=False))
-    st.write("Available columns:", list(first_row._asdict().keys()))
     desc_col = next((k for k in df.columns if k.strip().lower() == "business description"), None)
     if not desc_col:
         raise KeyError("Could not locate 'Business Description' column")
-        
+
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_to_idx = {
             executor.submit(
                 explain_match_structured,
                 query_text,
-                row._asdict()[desc_col],
-                score,
+                df.iloc[idx][desc_col],
+                scores[idx],
                 client,
                 role
-            ): idx for idx, (row, score) in enumerate(zip(df.itertuples(), scores))
+            ): idx for idx in range(len(df))
         }
+
         for future in as_completed(future_to_idx):
             idx = future_to_idx[future]
             try:

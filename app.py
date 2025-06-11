@@ -31,14 +31,15 @@ def init_openai(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 # ===== LOAD DATABASE =====
-def load_database() -> tuple[pd.DataFrame, list]:
+def load_database():
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
+
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)
 
-        st.write("All columns:", df.columns.tolist())  # ✅ NOW SAFE
+        st.write("All columns:", df.columns.tolist())  # ✅ Now safe
 
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:

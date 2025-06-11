@@ -16,6 +16,11 @@ import os
 import pickle
 import xlsxwriter
 
+
+# Define paths BEFORE using them
+VECTOR_DB_PATH = "app_data/vector_db.index"
+VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
+
 # Load or build FAISS vector DB for business descriptions
 if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
     st.info("Generating and caching vector database for the first time...")
@@ -85,8 +90,6 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
         embeddings.extend([record.embedding for record in response.data])
     return embeddings
 
-VECTOR_DB_PATH = "app_data/vector_db.index"
-VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 
 def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
     dim = len(embeddings[0])

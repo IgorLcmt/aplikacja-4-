@@ -158,7 +158,7 @@ Company Description:
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     return gpt_chat(
-        "Summarize the following website cont. Focus on identifying the company's industry, business model, Sales channels, core products or services, and main customer types. In description don't add name of the company.",
+        "Extract the most relevant keywords from the following website content. Focus on identifying the company's industry, business model, sales channels, core products or services, and main customer types. Do not include the company name. Return a concise, comma-separated list of keywords.",
         raw_text, client
     )
 

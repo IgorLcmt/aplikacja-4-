@@ -24,6 +24,8 @@ VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 with open(VECTOR_MAPPING_PATH, "rb") as f:
     id_mapping = pickle.load(f)
 
+scores, indices = index.search(query_embed.astype(np.float32), k=100)
+
 valid_indices = []
 for i in indices[0]:
     if i < len(id_mapping):

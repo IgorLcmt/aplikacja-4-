@@ -278,6 +278,16 @@ def main():
             st.session_state[k] = v
 
     df, industry_list = load_database()
+
+    # Load FAISS index and ID mapping
+    if os.path.exists(VECTOR_DB_PATH) and os.path.exists(VECTOR_MAPPING_PATH):
+        index = faiss.read_index(VECTOR_DB_PATH)
+        with open(VECTOR_MAPPING_PATH, "rb") as f:
+            id_mapping = pickle.load(f)
+    
+        # ✅ Add this check right here:
+        assert len(df) == index.ntotal, "Vector count and dataframe row count mismatch!"
+
     
     # Load or build FAISS vector DB for business descriptions
     if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):

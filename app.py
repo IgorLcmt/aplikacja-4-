@@ -40,7 +40,6 @@ def load_database():
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)
 
-
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:
             df[val_col] = pd.to_numeric(df[val_col], errors="coerce")
@@ -73,12 +72,12 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     embeddings = []
     for i in range(0, len(clean_texts), BATCH_SIZE):
         batch = clean_texts[i:i + BATCH_SIZE]
-        response = _client.embeddings.create(
-            input=batch,
-            model="text-embedding-3-large"
-        )
+        response = _client.embeddings.create(input=batch, model="text-embedding-ada-002")
         embeddings.extend([record.embedding for record in response.data])
     return embeddings
+
+VECTOR_DB_PATH = "app_data/vector_db.index"
+VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 
 def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
     dim = len(embeddings[0])
@@ -115,46 +114,45 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     except Exception:
         return ""
 
-def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> dict:
+def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> str:
     prompt = f"""
-You are a strict business analyst. Based on the information below, return a structured JSON with YES/NO flags and an overall match level.
+You are a top tier valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
+
+Do NOT evaluate partnership or collaboration potential. Focus strictly on comparability.
 
 SIMILARITY SCORE: {similarity_score:.2f}
 
-1. Are the companies in the same or highly similar **industry**?
-2. Do they offer comparable **products/services**?
-3. Do they serve the same **customer segment** (e.g. B2B vs B2C)?
-4. Do they operate in the same **business role** (e.g. both manufacturers, both distributors)?
-5. Are they active in the same or similar **geography** (Poland, Europe, USA/Canada)?
+Evaluate the match using YES/NO answers with short factual justification across the following dimensions:
 
-Return only this JSON structure:
+1. **Industry** – Are the companies in the same or highly similar industries?
+2. **Product/Service Type** – Do they offer comparable products or services?
+3. **Customer Segment** – Do they serve the same buyer types (e.g., retail, industrial, B2B)?
+4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors, or both service providers)?
+5. **Geography** – Do they operate in the same or similar markets? Priority Poland, then Europe, the USA and Canada 
 
-{{
-  "industry_match": "YES" or "NO",
-  "product_match": "YES" or "NO",
-  "customer_match": "YES" or "NO",
-  "role_match": "YES" or "NO",
-  "geographic_match": "YES" or "NO",
-  "overall": "STRONG MATCH", "MODERATE MATCH", or "WEAK MATCH"
-}}
+Respond in this format:
+
+---
+**Similarity Score**: X.XX  
+**Industry Match**: YES/NO – Short reason  
+**Product/Service Match**: YES/NO – Short reason  
+**Customer Segment Match**: YES/NO – Short reason  
+**Business Role Match**: YES/NO – Short reason  
+**Geographic Match**: YES/NO – Short reason    
+**Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Keep it factual
+---
 
 Query Profile:
 {query}
 
 Company Description:
 {company_desc}
-"""
-
+    """
     if role:
-        prompt += f"\n\nNote: The target operates as a **{role.lower()}**. Only return YES for role_match if the company has the same function."
+        prompt += f"\n\nNOTE: The target company operates as a **{role.lower()}**. Evaluate whether the company below matches the same business role. Be strict when the role differs."
 
-    raw_response = gpt_chat("You are a strict and structured business analyst. Output JSON only.", prompt, client)
+    return gpt_chat("You are a critical business analyst.", prompt, client)
 
-    try:
-        return json.loads(raw_response)
-    except Exception:
-        return {"industry_match": "NO", "product_match": "NO", "customer_match": "NO", "role_match": "NO", "geographic_match": "NO", "overall": "WEAK MATCH"}
-        
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     prompt = f"""
 Analyze the following scraped website content. Your goal is to extract only meaningful business-relevant information and ignore any unrelated UI content, legal notices, navigation text, or generic phrases.
@@ -186,11 +184,11 @@ Here is the website content:
 {raw_text}
 """
     return gpt_chat(
-    "You are a senior business analyst specializing in B2B company profiling for investment and M&A purposes.",
-    prompt,
-    client
-)
-    
+        "You are a senior business analyst specializing in B2B company profiling for investment and M&A purposes.",
+        prompt,
+        client
+    )
+
 @st.cache_data(show_spinner="Fetching and summarizing website...")
 def scrape_website_cached(url: str) -> str:
     return scrape_website(url)
@@ -271,7 +269,6 @@ def main():
     df, industry_list = load_database()
 
     # Sidebar
-    
     st.sidebar.title("Transaction Finder 💻")
     
     with st.sidebar:
@@ -327,82 +324,51 @@ def main():
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
-        
-            detected_industry = detect_industry_from_text(query_text, client).strip()
-            st.info(f"🔍 Detected primary industry: **{detected_industry}**")
-        
-            # Embed detected industry
+            detected_industry = detect_industry_from_text(query_text, client)
+            st.info(f"Detected primary industry: **{detected_industry}**")
+
             industry_embeddings_batch = embed_text_batch([detected_industry], client)
             if not industry_embeddings_batch:
                 st.error("Industry embedding failed.")
                 st.stop()
-            industry_embedding = industry_embeddings_batch[0]
-        
-            # Embed all unique industries from the DB
+            industry_embeddings = industry_embeddings_batch[0]
+
             unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            db_industries_cleaned = [i.split(",")[0].strip() for i in unique_industries]
-            embedded_db_industries = embed_text_batch(db_industries_cleaned, client)
-        
-            # Compute similarity between detected industry and all DB industries
-            industry_scores = cosine_similarity([industry_embedding], embedded_db_industries).flatten()
-            matched_indices = np.where(industry_scores > 0.80)[0]
-            matched_detected_industries = [unique_industries[i] for i in matched_indices]
-        
-            # Show the result to the user for transparency
-            st.caption(f"🧠 Matched industries in DB: {', '.join(matched_detected_industries) if matched_detected_industries else 'None'}")
-        
-            # Manual fuzzy matches from dropdown
+            industry_to_embed = [i.split(",")[0].strip() for i in unique_industries]
+            industry_to_embed = [i.strip() for i in industry_to_embed]
+
+            embedded_db_industries = embed_text_batch(industry_to_embed, client)
+            industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
+            top_indices = np.where(industry_scores > 0.80)[0]
+            matching_industries = [unique_industries[i] for i in top_indices]
+            initial_filter = df["Primary Industry"].isin(matching_industries)
+
             fuzzy_matches = []
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
-        
-            # Decide which filter to apply
-            if manual_industries:
-                combined_filter = df["Primary Industry"].isin(fuzzy_matches)
-            elif use_detected_also and matched_detected_industries:
-                combined_filter = df["Primary Industry"].isin(matched_detected_industries)
+                manual_filter = df["Primary Industry"].isin(fuzzy_matches)
+                combined_filter = manual_filter
             else:
-                # If no valid filtering is possible, skip filtering by industry
-                combined_filter = pd.Series(True, index=df.index)
-        
+                combined_filter = initial_filter
+
             df = df[combined_filter].copy()
-        
-            # Apply EV filters
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                 (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)
             ]
-        
             if df.empty:
-                st.error("❌ No companies match your filters. Try disabling industry filtering or broadening EV range.")
+                st.error("No companies match your filters.")
                 return
 
             descriptions = df["Business Description"].astype(str).tolist()
-            if not descriptions or all(d.strip().lower() == "nan" for d in descriptions):
-                st.error("❌ No usable business descriptions found.")
-                return
-            
             query_variants = [query_text] + paraphrase_query(query_text, client)
             query_embeds = np.array(embed_text_batch(query_variants, client))
-            if query_embeds.shape[0] == 0:
-                st.error("❌ Failed to generate query embeddings.")
-                return
-            
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
-            
             db_embeds = np.array(embed_text_batch(descriptions, client))
-            if db_embeds.shape[0] == 0:
-                st.error("❌ Failed to generate database embeddings.")
-                return
-            
             scores = cosine_similarity(db_embeds, query_embed).flatten()
-            scores = np.where(scores < 0.45, 0, scores)
-            
-            # ✅ This line was missing
             top_indices = np.argsort(-scores)[:40]
-            
             df_top = df.iloc[top_indices].copy().reset_index(drop=True)
             df_top["Similarity Score"] = scores[top_indices]
 
@@ -413,29 +379,13 @@ def main():
                 )
             df_top["Explanation"] = explanations
 
-            if not df_top.empty and isinstance(df_top["Explanation"].iloc[0], dict):
-                st.caption("🧠 Example GPT explanation for top match:")
-                st.json(df_top["Explanation"].iloc[0])
-            
-            def explanation_passes(expl: dict) -> bool:
-                return (
-                    expl.get("industry_match") == "YES" and
-                    expl.get("role_match") == "YES" and
-                    expl.get("customer_match") == "YES"
-                )
-            
-            df_top = df_top[df_top["Explanation"].apply(explanation_passes)]
-
             # ✅ Compute hybrid scores
-            relevant_industries = set(matched_detected_industries + fuzzy_matches) if manual_industries else set(matched_detected_industries)
+            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
             INDUSTRY_BOOST = 0.20
             NO_PENALTY = 0.05
 
-            def count_no_answers(explanation: dict) -> int:
-                return sum(
-                    explanation.get(key) == "NO"
-                    for key in ["industry_match", "product_match", "customer_match", "role_match", "geographic_match"]
-                )
+            def count_no_answers(explanation: str) -> int:
+                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
 
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
 
@@ -458,12 +408,11 @@ def main():
 
             df_top = df_top.sort_values("Hybrid Score", ascending=False).head(20)
 
-            if manual_industries:
-                valid_industries = set(matched_detected_industries + fuzzy_matches)
+            if manual_industries or use_detected_also:
+                valid_industries = set(matching_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
-
 
             st.session_state.results = df_top
             st.session_state.generate_new = False

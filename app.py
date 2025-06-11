@@ -14,6 +14,7 @@ import time
 import faiss
 import os
 import pickle
+import xlsxwriter
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
@@ -396,7 +397,7 @@ def main():
         st.dataframe(st.session_state.results, use_container_width=True)
 
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
             st.session_state.results.to_excel(writer, index=False)
 
         col1, col2 = st.columns(2)

@@ -158,8 +158,20 @@ Company Description:
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     return gpt_chat(
-        "Translate the following website content to English if needed. From the following business description, extract the most relevant keywords about the company's industry, business model, products, customer types, and sales methods. Return a concise comma-separated list of keywords only.",
-        raw_text, client
+          "Translate the following content to English if needed, then summarize it into a coherent business description.",
+        f"""Based on the following company description, generate a list of specific business-related keyword phrases. 
+Focus on the company’s roles, specializations, services, strategies, technologies, and business outcomes. 
+Each keyword phrase should be short (3–7 words), capitalized like a proper noun, and formatted as a single line, separated by ' OR '. 
+Do not include the company name or generic/unrelated terms. Use only meaningful and business-relevant keyword phrases that reflect expertise, tools, and outcomes.
+
+Return the result in this format:
+
+Keyword Phrase 1 OR Keyword Phrase 2 OR Keyword Phrase 3 OR ...
+
+Here is the description:
+{raw_text}
+""",
+        client
     )
 
 @st.cache_data(show_spinner="Fetching and summarizing website...")

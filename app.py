@@ -206,8 +206,8 @@ def parallel_explanations(df, query_text, scores, client, role):
     explanations = [""] * len(df)
 
     first_row = next(df.itertuples(index=False))
-    st.write("Column names found:", list(first_row._asdict().keys()))
-    desc_col = next((k for k in first_row._asdict().keys() if "business" in k.lower() and "description" in k.lower()), None)
+    st.write("Available columns:", list(first_row._asdict().keys()))
+    desc_col = next((k for k in first_row._asdict().keys() if "description" in k.lower()), None)
     if not desc_col:
         raise KeyError("Could not locate 'Business Description' column")
         

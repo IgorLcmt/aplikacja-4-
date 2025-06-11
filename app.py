@@ -342,7 +342,7 @@ def main():
             db_embeds = np.array(embed_text_batch(descriptions, client))
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             top_indices = np.argsort(-scores)[:40]
-            df_top = df.iloc[top_indices].copy()
+            df_top = df.iloc[top_indices].copy().reset_index(drop=True)
             df_top["Similarity Score"] = scores[top_indices]
 
             # ✅ Replaced sequential GPT calls with threaded executor

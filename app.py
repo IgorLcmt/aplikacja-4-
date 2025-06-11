@@ -62,6 +62,7 @@ def load_database():
         st.stop()
 
 # Define paths BEFORE using them
+
 VECTOR_DB_PATH = "app_data/vector_db.index"
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 

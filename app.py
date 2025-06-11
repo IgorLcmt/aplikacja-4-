@@ -31,16 +31,14 @@ def init_openai(api_key: str) -> OpenAI:
     return OpenAI(api_key=api_key)
 
 # ===== LOAD DATABASE =====
-@st.cache_data(show_spinner="Loading database...")
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
-        # ✅ Corrected header
-        df_preview = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
-        
-        # ✅ Keep your cleaning logic
+        df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)
+
+        st.write("All columns:", df.columns.tolist())  # ✅ NOW SAFE
 
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:
@@ -61,8 +59,6 @@ def load_database() -> tuple[pd.DataFrame, list]:
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
-
-    st.write("All columns:", df.columns.tolist())
 
 # ===== TEXT UTILS =====
 def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:

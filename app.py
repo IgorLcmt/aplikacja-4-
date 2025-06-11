@@ -163,35 +163,35 @@ Company Description:
     return gpt_chat("You are a critical business analyst.", prompt, client)
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
-prompt = f"""
-Analyze the following scraped website content. Your goal is to extract only meaningful business-relevant information and ignore any unrelated UI content, legal notices, navigation text, or generic phrases.
-
-Step 1: Summarize the company in fluent, neutral business English. Include:
-- Primary industry and sub-industry
-- Business model (e.g., B2B wholesale, D2C retail, SaaS licensing)
-- Core products or services
-- Customer types (e.g., industrial clients, ecommerce, distributors)
-- Geographic presence if available
-
-Step 2: Immediately after the summary, return 20 to 40 precise business keyword phrases that best describe the company’s offerings, specialties, and strategic focus. Each phrase should be:
-- Capitalized like a proper noun (e.g., 'LED Lighting Distribution')
-- Separated by ' OR '
-- Relevant to operations, services, technologies, and value proposition
-- Free of vague terms like 'About Us', 'Contact', 'Team', 'Main Office', etc.
-
-Respond in this format:
-
----
-SUMMARY:
-<short paragraph>
-
-KEYWORDS:
-Keyword Phrase 1 OR Keyword Phrase 2 OR Keyword Phrase 3 OR ...
----
-
-Here is the website content:
-{raw_text}
-"""
+    prompt = f"""
+    Analyze the following scraped website content. Your goal is to extract only meaningful business-relevant information and ignore any unrelated UI content, legal notices, navigation text, or generic phrases.
+    
+    Step 1: Summarize the company in fluent, neutral business English. Include:
+    - Primary industry and sub-industry
+    - Business model (e.g., B2B wholesale, D2C retail, SaaS licensing)
+    - Core products or services
+    - Customer types (e.g., industrial clients, ecommerce, distributors)
+    - Geographic presence if available
+    
+    Step 2: Immediately after the summary, return 20 to 40 precise business keyword phrases that best describe the company’s offerings, specialties, and strategic focus. Each phrase should be:
+    - Capitalized like a proper noun (e.g., 'LED Lighting Distribution')
+    - Separated by ' OR '
+    - Relevant to operations, services, technologies, and value proposition
+    - Free of vague terms like 'About Us', 'Contact', 'Team', 'Main Office', etc.
+    
+    Respond in this format:
+    
+    ---
+    SUMMARY:
+    <short paragraph>
+    
+    KEYWORDS:
+    Keyword Phrase 1 OR Keyword Phrase 2 OR Keyword Phrase 3 OR ...
+    ---
+    
+    Here is the website content:
+    {raw_text}
+    """
     return gpt_chat(
         "You are a senior business analyst specializing in B2B company profiling for investment and M&A purposes.",
         prompt,

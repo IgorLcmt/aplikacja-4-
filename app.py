@@ -163,7 +163,7 @@ Company Description:
     return gpt_chat("You are a critical business analyst.", prompt, client)
 
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
-    prompt = f"""
+prompt = f"""
 Analyze the following scraped website content. Your goal is to extract only meaningful business-relevant information and ignore any unrelated UI content, legal notices, navigation text, or generic phrases.
 
 Step 1: Summarize the company in fluent, neutral business English. Include:

@@ -35,9 +35,8 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database() -> tuple[pd.DataFrame, list]:
     try:
         # ✅ Corrected header
-        df_preview = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=None)
-        st.write("Preview of Excel file:", df_preview.head(5))
-
+        df_preview = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
+        
         # ✅ Keep your cleaning logic
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
         df.columns = df.columns.str.strip()

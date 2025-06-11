@@ -211,19 +211,19 @@ def parallel_explanations(df, query_text, scores, client, role):
             executor.submit(
                 explain_match_structured,
                 query_text,
-                df.iloc[idx][desc_col],
-                scores[idx],
+                df.iloc[i][desc_col],
+                scores[i],
                 client,
                 role
-            ): idx for idx in range(len(df))
+            ): i for i in range(len(df))
         }
 
         for future in as_completed(future_to_idx):
-            idx = future_to_idx[future]
+            i = future_to_idx[future]
             try:
-                explanations[idx] = future.result()
+                explanations[i] = future.result()
             except Exception:
-                explanations[idx] = "Explanation failed"
+                explanations[i] = "Explanation failed"
     return explanations
 
 # ===== MAIN APP =====

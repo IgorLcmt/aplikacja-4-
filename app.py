@@ -415,7 +415,7 @@ def main():
             df_top["Explanation"] = explanations
 
             # ✅ Compute hybrid scores
-            relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
+            relevant_industries = set(matched_detected_industries + fuzzy_matches) if manual_industries else set(matched_detected_industries)
             INDUSTRY_BOOST = 0.20
             NO_PENALTY = 0.05
 

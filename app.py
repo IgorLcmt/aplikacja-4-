@@ -55,7 +55,9 @@ def load_database():
 
         industry_list = sorted(set(cleaned))
         return df, industry_list
-
+        
+    st.write("Loaded columns:", df.columns.tolist())
+    
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()

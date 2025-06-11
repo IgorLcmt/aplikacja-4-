@@ -19,6 +19,7 @@ import xlsxwriter
 # Define paths BEFORE using them
 
 VECTOR_DB_PATH = "app_data/vector_db.index"
+index = faiss.read_index(VECTOR_DB_PATH)
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 
 with open(VECTOR_MAPPING_PATH, "rb") as f:
@@ -108,6 +109,11 @@ def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
     with open(VECTOR_MAPPING_PATH, "wb") as f:
         pickle.dump(metadata, f)
     faiss.write_index(index, VECTOR_DB_PATH)
+
+def load_faiss_index() -> faiss.Index:
+    return faiss.read_index(VECTOR_DB_PATH)
+
+index = load_faiss_index()
 
 @st.cache_resource
 def load_vector_db():

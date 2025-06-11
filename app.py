@@ -437,7 +437,19 @@ def main():
             
             if manual_industries or use_detected_also:
                 valid_industries = set(matching_industries + fuzzy_matches)
+            
+                if use_detected_also:
+                    # Add fuzzy matches to the detected industry
+                    close_matches = difflib.get_close_matches(
+                        detected_industry,
+                        df["Primary Industry"].dropna().astype(str).unique(),
+                        n=5,
+                        cutoff=0.6
+                    )
+                    valid_industries.update(close_matches)
+            
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
+            
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
             

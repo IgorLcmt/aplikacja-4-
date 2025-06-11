@@ -115,47 +115,46 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
     except Exception:
         return ""
 
-def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> str:
+def explain_match_structured(query: str, company_desc: str, similarity_score: float, client: OpenAI, role: str = "") -> dict:
     prompt = f"""
-You are a top tier valuation analyst. Your job is to assess whether the following company profile matches a known transaction based on factual business similarities.
-
-Do NOT evaluate partnership or collaboration potential. Focus strictly on comparability.
+You are a strict business analyst. Based on the information below, return a structured JSON with YES/NO flags and an overall match level.
 
 SIMILARITY SCORE: {similarity_score:.2f}
 
-Evaluate the match using YES/NO answers with short factual justification across the following dimensions:
+1. Are the companies in the same or highly similar **industry**?
+2. Do they offer comparable **products/services**?
+3. Do they serve the same **customer segment** (e.g. B2B vs B2C)?
+4. Do they operate in the same **business role** (e.g. both manufacturers, both distributors)?
+5. Are they active in the same or similar **geography** (Poland, Europe, USA/Canada)?
 
-1. **Industry** – Are the companies in the same or highly similar industries?
-2. **Product/Service Type** – Do they offer comparable products or services?
-3. **Customer Segment** – Do they serve the same buyer types (e.g., retail, industrial, B2B)?
-4. **Business Role** – Do they operate in the same function (e.g., both manufacturers, or both distributors, or both service providers)?
-5. **Geography** – Do they operate in the same or similar markets? Priority Poland, then Europe, the USA and Canada 
+Return only this JSON structure:
 
-Respond in this format:
-
----
-**Similarity Score**: X.XX  
-**Industry Match**: YES/NO – Short reason  
-**Product/Service Match**: YES/NO – Short reason  
-**Customer Segment Match**: YES/NO – Short reason  
-**Business Role Match**: YES/NO – Short reason  
-**Geographic Match**: YES/NO – Short reason    
-**Overall Verdict**: STRONG MATCH / MODERATE MATCH / WEAK MATCH – Keep it factual
----
+{{
+  "industry_match": "YES" or "NO",
+  "product_match": "YES" or "NO",
+  "customer_match": "YES" or "NO",
+  "role_match": "YES" or "NO",
+  "geographic_match": "YES" or "NO",
+  "overall": "STRONG MATCH", "MODERATE MATCH", or "WEAK MATCH"
+}}
 
 Query Profile:
 {query}
 
 Company Description:
 {company_desc}
-    """
-    
+"""
+
     if role:
-        prompt += f"\n\nNOTE: The target company operates as a **{role.lower()}**. Evaluate whether the company below matches the same business role. Be strict when the role differs."
+        prompt += f"\n\nNote: The target operates as a **{role.lower()}**. Only return YES for role_match if the company has the same function."
 
+    raw_response = gpt_chat("You are a strict and structured business analyst. Output JSON only.", prompt, client)
 
-    return gpt_chat("You are a critical business analyst.", prompt, client)
-
+    try:
+        return json.loads(raw_response)
+    except Exception:
+        return {"industry_match": "NO", "product_match": "NO", "customer_match": "NO", "role_match": "NO", "geographic_match": "NO", "overall": "WEAK MATCH"}
+        
 def summarize_scraped_text(raw_text: str, client: OpenAI) -> str:
     prompt = f"""
 Analyze the following scraped website content. Your goal is to extract only meaningful business-relevant information and ignore any unrelated UI content, legal notices, navigation text, or generic phrases.
@@ -413,6 +412,14 @@ def main():
                     df_top, query_text, df_top["Similarity Score"], client, selected_role
                 )
             df_top["Explanation"] = explanations
+            def explanation_passes(expl: dict) -> bool:
+            return (
+                expl.get("industry_match") == "YES" and
+                expl.get("role_match") == "YES" and
+                expl.get("customer_match") == "YES"
+            )
+            
+            df_top = df_top[df_top["Explanation"].apply(explanation_passes)]
 
             # ✅ Compute hybrid scores
             relevant_industries = set(matched_detected_industries + fuzzy_matches) if manual_industries else set(matched_detected_industries)

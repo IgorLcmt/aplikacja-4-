@@ -19,7 +19,21 @@ import xlsxwriter
 # Define paths BEFORE using them
 
 VECTOR_DB_PATH = "app_data/vector_db.index"
-VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
+with open(VECTOR_MAPPING_PATH, "rb") as f:
+    id_mapping = pickle.load(f)
+
+valid_indices = []
+for i in indices[0]:
+    if i < len(id_mapping):
+        idx = id_mapping[i]
+        if isinstance(idx, int) and idx < len(df):
+            valid_indices.append(idx)
+
+if not valid_indices:
+    st.warning("No valid matches found. Try different input or check your filters.")
+    st.stop()
+
+df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
 
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000

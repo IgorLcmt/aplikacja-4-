@@ -381,12 +381,29 @@ def main():
                 return
 
             descriptions = df["Business Description"].astype(str).tolist()
+            if not descriptions or all(d.strip().lower() == "nan" for d in descriptions):
+                st.error("❌ No usable business descriptions found.")
+                return
+            
             query_variants = [query_text] + paraphrase_query(query_text, client)
             query_embeds = np.array(embed_text_batch(query_variants, client))
+            if query_embeds.shape[0] == 0:
+                st.error("❌ Failed to generate query embeddings.")
+                return
+            
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
+            
             db_embeds = np.array(embed_text_batch(descriptions, client))
+            if db_embeds.shape[0] == 0:
+                st.error("❌ Failed to generate database embeddings.")
+                return
+            
             scores = cosine_similarity(db_embeds, query_embed).flatten()
             scores = np.where(scores < 0.45, 0, scores)
+            
+            # ✅ This line was missing
+            top_indices = np.argsort(-scores)[:40]
+            
             df_top = df.iloc[top_indices].copy().reset_index(drop=True)
             df_top["Similarity Score"] = scores[top_indices]
 

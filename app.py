@@ -328,42 +328,56 @@ def main():
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
-            detected_industry = detect_industry_from_text(query_text, client)
-            st.info(f"Detected primary industry: **{detected_industry}**")
-
+        
+            detected_industry = detect_industry_from_text(query_text, client).strip()
+            st.info(f"🔍 Detected primary industry: **{detected_industry}**")
+        
+            # Embed detected industry
             industry_embeddings_batch = embed_text_batch([detected_industry], client)
             if not industry_embeddings_batch:
                 st.error("Industry embedding failed.")
                 st.stop()
-            industry_embeddings = industry_embeddings_batch[0]
-
+            industry_embedding = industry_embeddings_batch[0]
+        
+            # Embed all unique industries from the DB
             unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
-            industry_to_embed = [i.split(",")[0].strip() for i in unique_industries]
-            industry_to_embed = [i.strip() for i in industry_to_embed]
-
-            embedded_db_industries = embed_text_batch(industry_to_embed, client)
-            industry_scores = cosine_similarity([industry_embeddings], embedded_db_industries).flatten()
-            top_indices = np.where(industry_scores > 0.80)[0]
-            matching_industries = [unique_industries[i] for i in top_indices]
-            initial_filter = df["Primary Industry"].isin(matching_industries)
-
+            db_industries_cleaned = [i.split(",")[0].strip() for i in unique_industries]
+            embedded_db_industries = embed_text_batch(db_industries_cleaned, client)
+        
+            # Compute similarity between detected industry and all DB industries
+            industry_scores = cosine_similarity([industry_embedding], embedded_db_industries).flatten()
+            matched_indices = np.where(industry_scores > 0.80)[0]
+            matched_detected_industries = [unique_industries[i] for i in matched_indices]
+        
+            # Show the result to the user for transparency
+            st.caption(f"🧠 Matched industries in DB: {', '.join(matched_detected_industries) if matched_detected_industries else 'None'}")
+        
+            # Manual fuzzy matches from dropdown
             fuzzy_matches = []
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
-                manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                combined_filter = manual_filter
+        
+            # Decide which filter to apply
+            if manual_industries:
+                combined_filter = df["Primary Industry"].isin(fuzzy_matches)
+            elif use_detected_also and matched_detected_industries:
+                combined_filter = df["Primary Industry"].isin(matched_detected_industries)
             else:
-                combined_filter = initial_filter
-
+                # If no valid filtering is possible, skip filtering by industry
+                combined_filter = pd.Series(True, index=df.index)
+        
             df = df[combined_filter].copy()
+        
+            # Apply EV filters
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                 (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)
             ]
+        
             if df.empty:
-                st.error("No companies match your filters.")
+                st.error("❌ No companies match your filters. Try disabling industry filtering or broadening EV range.")
                 return
 
             descriptions = df["Business Description"].astype(str).tolist()

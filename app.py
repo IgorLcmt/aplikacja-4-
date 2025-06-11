@@ -412,12 +412,17 @@ def main():
                     df_top, query_text, df_top["Similarity Score"], client, selected_role
                 )
             df_top["Explanation"] = explanations
+
+            if not df_top.empty and isinstance(df_top["Explanation"].iloc[0], dict):
+                st.caption("🧠 Example GPT explanation for top match:")
+                st.json(df_top["Explanation"].iloc[0])
+            
             def explanation_passes(expl: dict) -> bool:
-            return (
-                expl.get("industry_match") == "YES" and
-                expl.get("role_match") == "YES" and
-                expl.get("customer_match") == "YES"
-            )
+                return (
+                    expl.get("industry_match") == "YES" and
+                    expl.get("role_match") == "YES" and
+                    expl.get("customer_match") == "YES"
+                )
             
             df_top = df_top[df_top["Explanation"].apply(explanation_passes)]
 
@@ -426,8 +431,11 @@ def main():
             INDUSTRY_BOOST = 0.20
             NO_PENALTY = 0.05
 
-            def count_no_answers(explanation: str) -> int:
-                return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
+            def count_no_answers(explanation: dict) -> int:
+                return sum(
+                    explanation.get(key) == "NO"
+                    for key in ["industry_match", "product_match", "customer_match", "role_match", "geographic_match"]
+                )
 
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
 
@@ -451,7 +459,7 @@ def main():
             df_top = df_top.sort_values("Hybrid Score", ascending=False).head(20)
 
             if manual_industries:
-                valid_industries = set(matching_industries + fuzzy_matches)
+                valid_industries = set(matched_detected_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")

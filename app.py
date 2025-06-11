@@ -35,8 +35,7 @@ def init_openai(api_key: str) -> OpenAI:
 def load_database():
     try:
         df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl", header=0)
-        st.write("Loaded columns:", df.columns.tolist()) 
-
+        
         df.columns = [col.strip().replace('\xa0', ' ') for col in df.columns]
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)

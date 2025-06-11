@@ -39,7 +39,6 @@ def load_database():
         df.columns = df.columns.str.strip()
         df.columns = df.columns.str.replace(r"\s+", " ", regex=True)
 
-        st.write("All columns:", df.columns.tolist())  # ✅ Now safe
 
         val_col = "Total Enterprise Value (mln$)"
         if val_col in df.columns:

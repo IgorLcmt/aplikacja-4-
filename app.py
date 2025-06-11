@@ -81,6 +81,21 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
         embeddings.extend([record.embedding for record in response.data])
     return embeddings
 
+def get_industry_embeddings(industry_list: List[str], client: OpenAI) -> pd.DataFrame:
+    """
+    Embeds each industry name using OpenAI and returns a DataFrame with industry and embedding.
+    """
+    embeddings = []
+    for i in range(0, len(industry_list), BATCH_SIZE):
+        batch = industry_list[i:i + BATCH_SIZE]
+        response = client.embeddings.create(input=batch, model="text-embedding-3-large")
+        embeddings.extend([r.embedding for r in response.data])
+    
+    return pd.DataFrame({
+        "industry": industry_list,
+        "embedding": embeddings
+    })
+
 
 def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
     dim = len(embeddings[0])
@@ -204,12 +219,25 @@ def paraphrase_query(query: str, client: OpenAI) -> List[str]:
     response = gpt_chat("Paraphrase this business query into 3 alternate versions.", query, client)
     return [line.strip("-• ") for line in response.splitlines() if line.strip()]
 
-def detect_industry_from_text(text: str, client: OpenAI) -> str:
-    return gpt_chat(
-        "Identify the company's primary industry. Respond with one word like IT, Healthcare, Retail, etc.",
-        text, client
-    )
-
+def detect_industries(description: str, client: OpenAI, industry_df: pd.DataFrame, top_n: int = 3) -> List[tuple]:
+    """
+    Takes a description, embeds it, and compares it to all industry embeddings.
+    Returns top_n most similar industries with similarity scores.
+    """
+    # Embed input
+    desc_clean = truncate_text(description.strip())
+    response = client.embeddings.create(input=[desc_clean], model="text-embedding-3-large")
+    input_vector = np.array(response.data[0].embedding).reshape(1, -1)
+    
+    # Prepare industry matrix
+    industry_matrix = np.vstack(industry_df["embedding"].values)
+    
+    # Compute similarity
+    sims = cosine_similarity(input_vector, industry_matrix)[0]
+    
+    # Sort and return top N
+    ranked = sorted(zip(industry_df["industry"], sims), key=lambda x: x[1], reverse=True)
+    return ranked[:top_n]
 def is_valid_url(url: str) -> bool:
     return isinstance(url, str) and re.match(r'^https?://', url) is not None
 
@@ -270,6 +298,7 @@ def main():
             st.session_state[k] = v
 
     df, industry_list = load_database()
+    industry_embeddings_df = get_industry_embeddings(industry_list, openai_client)
     
     # Load or build FAISS vector DB for business descriptions
     if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
@@ -307,7 +336,11 @@ def main():
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
-
+    f st.button("Detect Industry"):
+    if user_input:
+        top_industries = detect_industries(user_input, openai_client, industry_embeddings_df)
+        for i, (ind, score) in enumerate(top_industries):
+            st.markdown(f"**{i+1}. {ind}** – score: `{score:.3f}`")
     if not st.session_state.generate_new and st.session_state.results is None:
         st.info("Enter a company description or website and click **Find Matches**.")
         return

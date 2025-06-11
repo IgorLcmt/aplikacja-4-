@@ -17,19 +17,6 @@ import pickle
 import xlsxwriter
 
 
-# Define paths BEFORE using them
-VECTOR_DB_PATH = "app_data/vector_db.index"
-VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
-
-# Load or build FAISS vector DB for business descriptions
-if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
-    st.info("Generating and caching vector database for the first time...")
-    descriptions = df["Business Description"].astype(str).tolist()
-    db_embeddings = embed_text_batch(descriptions, client)
-    build_or_load_vector_db(db_embeddings, descriptions)
-else:
-    st.success("Vector database loaded from cache.")
-
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
 BATCH_SIZE = 100
@@ -73,6 +60,19 @@ def load_database():
     except Exception as e:
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
+
+# Define paths BEFORE using them
+VECTOR_DB_PATH = "app_data/vector_db.index"
+VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
+
+# Load or build FAISS vector DB for business descriptions
+if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
+    st.info("Generating and caching vector database for the first time...")
+    descriptions = df["Business Description"].astype(str).tolist()
+    db_embeddings = embed_text_batch(descriptions, client)
+    build_or_load_vector_db(db_embeddings, descriptions)
+else:
+    st.success("Vector database loaded from cache.")
 
 # ===== TEXT UTILS =====
 def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:

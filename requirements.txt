@@ -8,3 +8,4 @@ scikit-learn
 tiktoken
 faiss-cpu
 openpyxl
+xlsxwriter

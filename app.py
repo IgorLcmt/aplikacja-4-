@@ -186,8 +186,12 @@ Keyword Phrase 1 OR Keyword Phrase 2 OR Keyword Phrase 3 OR ...
 Here is the website content:
 {raw_text}
 """
-    return gpt_chat(prompt=prompt, system_prompt="You are a senior business analyst specializing in B2B company profiling for investment and M&A purposes.", client=client)
-
+    return gpt_chat(
+    "You are a senior business analyst specializing in B2B company profiling for investment and M&A purposes.",
+    prompt,
+    client
+)
+    
 @st.cache_data(show_spinner="Fetching and summarizing website...")
 def scrape_website_cached(url: str) -> str:
     return scrape_website(url)

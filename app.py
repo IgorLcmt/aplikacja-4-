@@ -402,9 +402,16 @@ def main():
             scores, indices = index.search(query_embed.astype(np.float32), 100)
             top_indices = indices[0]
             top_scores = scores[0]
+
+            valid_indices = [i for i in top_indices if isinstance(i, int) and i >= 0 and i < len(df)]
+            
+            if not valid_indices:
+                st.error("No valid matches found. Try different input or rebuild your embedding index.")
+                st.stop()
+            
+            df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
             
             # Take those rows from the full DataFrame
-            df_top = df.iloc[top_indices].copy().reset_index(drop=True)
             df_top["Similarity Score"] = top_scores
             
             # ✅ Replaced sequential GPT calls with threaded executor

@@ -19,6 +19,8 @@ import xlsxwriter
 # Define paths BEFORE using them
 
 VECTOR_DB_PATH = "app_data/vector_db.index"
+VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
+
 with open(VECTOR_MAPPING_PATH, "rb") as f:
     id_mapping = pickle.load(f)
 

@@ -16,6 +16,15 @@ import os
 import pickle
 import xlsxwriter
 
+# Load or build FAISS vector DB for business descriptions
+if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
+    st.info("Generating and caching vector database for the first time...")
+    descriptions = df["Business Description"].astype(str).tolist()
+    db_embeddings = embed_text_batch(descriptions, client)
+    build_or_load_vector_db(db_embeddings, descriptions)
+else:
+    st.success("Vector database loaded from cache.")
+
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
 BATCH_SIZE = 100
@@ -280,6 +289,14 @@ def main():
         role_options = ["", "Manufacturer", "Distributor", "Service Provider"]
         selected_role = st.selectbox("Business Role (optional):", role_options)
 
+        if st.sidebar.button("🔁 Rebuild Embeddings"):
+           st.warning("Rebuilding vector database from scratch...")
+           descriptions = df["Business Description"].astype(str).tolist()
+           db_embeddings = embed_text_batch(descriptions, client)
+           build_or_load_vector_db(db_embeddings, descriptions)
+           st.success("Embeddings rebuilt and cached.")
+           st.rerun()
+
         if st.button("🔍 Find Matches"):
             st.session_state.generate_new = True
             st.rerun()
@@ -362,58 +379,66 @@ def main():
                 st.error("No companies match your filters.")
                 return
 
-            descriptions = df["Business Description"].astype(str).tolist()
+            # Load the FAISS index and metadata (prebuilt or cached)
+            index, metadata = load_vector_db()
+            
+            # Generate embeddings for the user query + paraphrases
             query_variants = [query_text] + paraphrase_query(query_text, client)
             query_embeds = np.array(embed_text_batch(query_variants, client))
             query_embed = np.mean(query_embeds, axis=0).reshape(1, -1)
-            db_embeds = np.array(embed_text_batch(descriptions, client))
-            scores = cosine_similarity(db_embeds, query_embed).flatten()
-            top_indices = np.argsort(-scores)[:40]
+            
+            # Search top matches using FAISS (searching ALL 8100 rows)
+            scores, indices = index.search(query_embed.astype(np.float32), 100)
+            top_indices = indices[0]
+            top_scores = scores[0]
+            
+            # Take those rows from the full DataFrame
             df_top = df.iloc[top_indices].copy().reset_index(drop=True)
-            df_top["Similarity Score"] = scores[top_indices]
-
+            df_top["Similarity Score"] = top_scores
+            
             # ✅ Replaced sequential GPT calls with threaded executor
             with st.spinner("Generating GPT-based similarity explanations..."):
                 explanations = parallel_explanations(
                     df_top, query_text, df_top["Similarity Score"], client, selected_role
                 )
             df_top["Explanation"] = explanations
-
+            
             # ✅ Compute hybrid scores
             relevant_industries = set(matching_industries + fuzzy_matches) if manual_industries else set(matching_industries)
             INDUSTRY_BOOST = 0.20
             NO_PENALTY = 0.05
-
+            
             def count_no_answers(explanation: str) -> int:
                 return len(re.findall(r"\*\*.*?\*\*: NO", explanation, re.IGNORECASE))
-
+            
             df_top["NO Count"] = df_top["Explanation"].apply(count_no_answers)
-
+            
             df_top["Adjusted Score"] = df_top.apply(
                 lambda row: row["Similarity Score"] + INDUSTRY_BOOST
                 if row["Primary Industry"] in relevant_industries else row["Similarity Score"],
                 axis=1
             )
-
+            
             df_top["Hybrid Score"] = df_top.apply(
                 lambda row: row["Adjusted Score"] - (row["NO Count"] * NO_PENALTY),
                 axis=1
             )
-
+            
             df_top = df_top[df_top["NO Count"] <= 4]
-
+            
             df_top["Match Verdict"] = df_top["NO Count"].apply(
                 lambda x: "❌ Poor Match" if x >= 4 else "✅ Relevant"
             )
-
+            
             df_top = df_top.sort_values("Hybrid Score", ascending=False).head(20)
-
+            
             if manual_industries or use_detected_also:
                 valid_industries = set(matching_industries + fuzzy_matches)
                 df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")
-
+            
+            # Save the final results into session state
             st.session_state.results = df_top
             st.session_state.generate_new = False
 

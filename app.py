@@ -15,9 +15,9 @@ import faiss
 import os
 import pickle
 import xlsxwriter
-from app import embed_text_batch, build_or_load_vector_db 
+from app.logic import embed_text_batch, build_or_load_vector_db
 
-# Define paths BEFORE using them
+
 
 VECTOR_DB_PATH = "app_data/vector_db.index"
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"

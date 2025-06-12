@@ -97,7 +97,6 @@ def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
 def load_faiss_index() -> faiss.Index:
     return faiss.read_index(VECTOR_DB_PATH)
 
-index = load_faiss_index()
 
 @st.cache_resource
 def load_vector_db():
@@ -401,7 +400,7 @@ def main():
 
             # Load the FAISS index and metadata (prebuilt or cached)
             index, metadata = load_vector_db()
-            assert index.ntotal == len(df), "Vector count and dataframe row count mismatch!"
+            assert index.ntotal == len(id_mapping), "Vector count and ID mapping length mismatch!"
             
             # Generate embeddings for the user query + paraphrases
             query_variants = [query_text] + paraphrase_query(query_text, client)
@@ -414,9 +413,9 @@ def main():
             top_scores = scores[0]
 
             # Use id_mapping to remap index positions to original df rows (if implemented)
-            valid_indices = [i for i in top_indices if isinstance(i, int) and 0 <= i < len(df)]
-            df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
-            df_top["Similarity Score"] = top_scores
+            valid_indices = [i for i in top_indices if isinstance(i, int) and 0 <= i < len(id_mapping)]
+            matched_descriptions = [id_mapping[i] for i in valid_indices]
+            df_top = df[df["Business Description"].isin(matched_descriptions)].copy().reset_index(drop=True)
 
             valid_indices = [i for i in top_indices if isinstance(i, int) and i >= 0 and i < len(df)]
 

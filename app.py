@@ -484,7 +484,7 @@ def main():
             # ✅ Replaced sequential GPT calls with threaded executor
             with st.spinner("Generating GPT-based similarity explanations..."):
                 explanations = parallel_explanations(
-                    df_top, query_text, df_top["Similarity Score"], client, selected_role
+                    df_top, query_text, df_top["Similarity Score"], client
                 )
             df_top["Explanation"] = explanations
             

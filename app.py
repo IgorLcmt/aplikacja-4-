@@ -492,7 +492,7 @@ def main():
 
             with st.spinner("Generating GPT-based similarity explanations..."):
                 explanations = parallel_explanations(
-                    df_top, query_text, df_top["Similarity Score"].tolist(), client
+                    df_top, query_text, df_top["Similarity Score"].tolist(), client, role=""
                 )
             df_top["Explanation"] = explanations
             

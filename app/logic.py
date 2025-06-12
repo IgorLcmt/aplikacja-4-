@@ -24,7 +24,10 @@ def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     for i in range(0, len(clean_texts), BATCH_SIZE):
         batch = clean_texts[i:i + BATCH_SIZE]
         response = _client.embeddings.create(input=batch, model="text-embedding-3-large")
-        embeddings.extend([record.embedding for record in response.data])
+        for record in response.data:
+            vec = np.array(record.embedding, dtype=np.float32)
+            vec /= np.linalg.norm(vec)  # normalize
+            embeddings.append(vec)
     return embeddings
 
 def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):

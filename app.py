@@ -317,9 +317,19 @@ def main():
 
         if st.sidebar.button("🔁 Rebuild Embeddings"):
            st.warning("Rebuilding vector database from scratch...")
-           descriptions = df["Business Description"].astype(str).tolist()
-           db_embeddings = embed_text_batch(descriptions, client)
-           build_or_load_vector_db(db_embeddings, descriptions)
+           # 1. Save the full DataFrame used for embedding
+            df_embedded = df.copy()
+            df_embedded.to_pickle("app_data/df_embedded.pkl")
+            
+            # 2. Extract descriptions
+            descriptions = df_embedded["Business Description"].astype(str).tolist()
+            
+            # 3. Embed
+            db_embeddings = embed_text_batch(descriptions, client)
+            
+            # 4. Build FAISS index
+            build_or_load_vector_db(db_embeddings, descriptions)
+
            st.success("Embeddings rebuilt and cached.")
            st.rerun()
 
@@ -438,7 +448,8 @@ def main():
             # Use id_mapping to remap index positions to original df rows (if implemented)
             valid_indices = [i for i in top_indices if isinstance(i, int) and 0 <= i < len(id_mapping)]
             matched_descriptions = [id_mapping[i] for i in valid_indices]
-            df_top = df[df["Business Description"].isin(matched_descriptions)].copy().reset_index(drop=True)
+            df_full, _ = load_database()
+            df_top = df_full[df_full["Business Description"].isin(matched_descriptions)].copy().reset_index(drop=True)
 
             valid_indices = [i for i in top_indices if isinstance(i, int) and i >= 0 and i < len(df)]
 

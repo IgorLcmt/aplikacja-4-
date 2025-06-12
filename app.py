@@ -307,36 +307,36 @@ def main():
     st.sidebar.title("Transaction Finder 💻")
     
     with st.sidebar:
-    query_input = st.text_input("🌐 Company website (optional):")
-    min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)
-    max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
-    manual_industries = st.multiselect("🟧 Filter by industry (optional):", options=industry_list)
-    use_detected_also = st.checkbox("Include detected industry in filtering", value=False)
-
-    with st.expander("🛠️ Rule Builder"):
-        st.markdown("---")
-        st.subheader("🔍 Rule Builder")
-
-        q_kw = st.text_input("Query Keyword", placeholder="e.g., seo")
-        m_kw = st.text_input("Match Keyword", placeholder="e.g., google ads")
-        multiplier = st.slider("Boost Factor", min_value=0.5, max_value=2.0, value=1.1, step=0.05)
-
-        if st.button("➕ Add Rule"):
-            # Store new rule to session state
-            if "custom_rules" not in st.session_state:
-                st.session_state.custom_rules = []
-
-            new_rule = (q_kw.lower(), m_kw.lower(), multiplier, "User-added rule")
-            st.session_state.custom_rules.append(new_rule)
-            st.success(f"Added rule: ({q_kw} ∩ {m_kw}) → ×{multiplier}")
-
-    if st.sidebar.button("🧠 Rebuild Embeddings"):
-        st.warning("Rebuilding vector database from scratch...")
-        # 1. Save the full DataFrame used for embedding
-        df_embedded = df.copy()
-        df_embedded.to_pickle("app_data/df_embedded.pkl")
-
-        st.write("📁 Embedded data file exists:", os.path.exists("app_data/df_embedded.pkl"))
+        query_input = st.text_input("🌐 Company website (optional):")
+        min_value = st.number_input("Min Enterprise Value ($M)", 0.0, value=0.0)
+        max_value = st.number_input("Max Enterprise Value ($M)", 0.0, value=10000.0)
+        manual_industries = st.multiselect("🟧 Filter by industry (optional):", options=industry_list)
+        use_detected_also = st.checkbox("Include detected industry in filtering", value=False)
+    
+        with st.expander("🛠️ Rule Builder"):
+            st.markdown("---")
+            st.subheader("🔍 Rule Builder")
+    
+            q_kw = st.text_input("Query Keyword", placeholder="e.g., seo")
+            m_kw = st.text_input("Match Keyword", placeholder="e.g., google ads")
+            multiplier = st.slider("Boost Factor", min_value=0.5, max_value=2.0, value=1.1, step=0.05)
+    
+            if st.button("➕ Add Rule"):
+                # Store new rule to session state
+                if "custom_rules" not in st.session_state:
+                    st.session_state.custom_rules = []
+    
+                new_rule = (q_kw.lower(), m_kw.lower(), multiplier, "User-added rule")
+                st.session_state.custom_rules.append(new_rule)
+                st.success(f"Added rule: ({q_kw} ∩ {m_kw}) → ×{multiplier}")
+    
+        if st.sidebar.button("🧠 Rebuild Embeddings"):
+            st.warning("Rebuilding vector database from scratch...")
+            # 1. Save the full DataFrame used for embedding
+            df_embedded = df.copy()
+            df_embedded.to_pickle("app_data/df_embedded.pkl")
+    
+            st.write("📁 Embedded data file exists:", os.path.exists("app_data/df_embedded.pkl"))
                 
             # 2. Extract descriptions
             descriptions = df_embedded["Business Description"].astype(str).tolist()

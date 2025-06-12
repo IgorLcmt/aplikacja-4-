@@ -485,6 +485,11 @@ def main():
             df_top["Similarity Score"] = top_scores[:score_len]
             
             # ✅ Replaced sequential GPT calls with threaded executor
+
+            print("client:", type(client))
+            print("query_text:", query_text)
+            print("scores:", type(df_top["Similarity Score"].tolist()))
+
             with st.spinner("Generating GPT-based similarity explanations..."):
                 explanations = parallel_explanations(
                     df_top, query_text, df_top["Similarity Score"].tolist(), client

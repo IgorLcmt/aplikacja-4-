@@ -25,18 +25,6 @@ VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 with open(VECTOR_MAPPING_PATH, "rb") as f:
     id_mapping = pickle.load(f)
     
-print("Loading database...")
-df = pd.read_excel("app_data/Database.xlsx", engine="openpyxl")
-descriptions = df["Business Description"].astype(str).tolist()
-
-print("Generating embeddings...")
-embeddings = embed_text_batch(descriptions, client)
-
-print("Building FAISS index...")
-build_or_load_vector_db(embeddings, descriptions)
-
-print("✅ FAISS index built and saved.")
-
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000
 BATCH_SIZE = 100

@@ -37,3 +37,20 @@ def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
     with open(VECTOR_MAPPING_PATH, "wb") as f:
         pickle.dump(metadata, f)
     faiss.write_index(index, VECTOR_DB_PATH)
+    
+def boost_score(query_text: str, match_text: str, base_score: float) -> float:
+    q = query_text.lower()
+    m = match_text.lower()
+    score = base_score
+
+    # Combine static + dynamic rules
+    active_rules = BOOST_RULES.copy()
+    if "custom_rules" in st.session_state:
+        active_rules += st.session_state.custom_rules
+
+    for q_kw, m_kw, multiplier, reason in active_rules:
+        if q_kw in q and m_kw in m:
+            print(f"🔼 Boost applied ({reason}): {q_kw} ∩ {m_kw} → x{multiplier}")
+            score *= multiplier
+
+    return score

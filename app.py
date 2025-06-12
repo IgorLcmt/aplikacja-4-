@@ -364,6 +364,11 @@ def main():
             return
         
         st.session_state["edited_summary"] = query_text
+        
+        print("Original DB size:", len(df_original))
+        print("After industry filter:", len(df))
+        print("After value filter:", len(df after EV filter))  # use temp var if needed
+        print("Top match count before final industry check:", len(df_top))
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches
@@ -387,16 +392,32 @@ def main():
             initial_filter = df["Primary Industry"].isin(matching_industries)
 
             fuzzy_matches = []
+            manual_filter = pd.Series([False] * len(df))
+            initial_filter = pd.Series([False] * len(df))
+            
+            # Detected industry match
+            if detected_industry:
+                unique_industries = df["Primary Industry"].dropna().astype(str).unique().tolist()
+                initial_filter = df["Primary Industry"].isin(unique_industries)
+            
+            # Manual input match
             if manual_industries:
                 raw_industries = df["Primary Industry"].astype(str).tolist()
                 for selected in manual_industries:
                     fuzzy_matches.extend(get_close_matches(selected, raw_industries, n=20, cutoff=0.6))
                 manual_filter = df["Primary Industry"].isin(fuzzy_matches)
-                combined_filter = manual_filter
-            else:
-                combined_filter = initial_filter
-
+            
+            # Combine filters (union)
+            combined_filter = initial_filter | manual_filter
+            
+            # Debug: Log how much you're filtering
+            print(f"Initial match count (detected): {initial_filter.sum()}")
+            print(f"Manual fuzzy match count: {manual_filter.sum()}")
+            print(f"Total after combining filters: {combined_filter.sum()}")
+            
+            # Apply the combined filter
             df = df[combined_filter].copy()
+            
             df = df[
                 (df["Total Enterprise Value (mln$)"].fillna(0.0) >= min_value) &
                 (df["Total Enterprise Value (mln$)"].fillna(float("inf")) <= max_value)
@@ -484,7 +505,6 @@ def main():
                     )
                     valid_industries.update(close_matches)
             
-                df_top = df_top[df_top["Primary Industry"].isin(valid_industries)].copy()
             
                 if df_top.empty:
                     st.warning("No top matches aligned with selected industries. Try relaxing filters.")

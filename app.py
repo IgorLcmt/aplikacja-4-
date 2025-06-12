@@ -284,7 +284,9 @@ def main():
             id_mapping = pickle.load(f)
     
         # ✅ Add this check right here:
-        assert len(df) == index.ntotal, "Vector count and dataframe row count mismatch!"
+        if index.ntotal != len(df):
+            st.error("Vector index count does not match dataset rows. Rebuild embeddings to sync.")
+            st.stop()
 
     
     # Load or build FAISS vector DB for business descriptions

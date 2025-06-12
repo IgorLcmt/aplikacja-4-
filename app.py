@@ -479,6 +479,9 @@ def main():
                 st.stop()
             df_top = df_top.reset_index(drop=True)
             score_len = min(len(df_top), len(top_scores))
+            
+            # Align top_scores with df_top
+            df_top = df_top.iloc[:score_len].copy()
             df_top["Similarity Score"] = top_scores[:score_len]
             
             # ✅ Replaced sequential GPT calls with threaded executor

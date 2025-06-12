@@ -77,6 +77,8 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
 @st.cache_data
 def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
+    for t in clean_texts:
+    assert len(t) > 20, f"Text too short: {t}"
     embeddings = []
     for i in range(0, len(clean_texts), BATCH_SIZE):
         batch = clean_texts[i:i + BATCH_SIZE]

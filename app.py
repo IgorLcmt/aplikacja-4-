@@ -320,6 +320,8 @@ def main():
            # 1. Save the full DataFrame used for embedding
             df_embedded = df.copy()
             df_embedded.to_pickle("app_data/df_embedded.pkl")
+
+            st.write("📦 Embedded data file exists:", os.path.exists("app_data/df_embedded.pkl"))
             
             # 2. Extract descriptions
             descriptions = df_embedded["Business Description"].astype(str).tolist()
@@ -448,18 +450,18 @@ def main():
             # Use id_mapping to remap index positions to original df rows (if implemented)
             valid_indices = [i for i in top_indices if isinstance(i, int) and 0 <= i < len(id_mapping)]
             matched_descriptions = [id_mapping[i] for i in valid_indices]
-            df_full, _ = load_database()
-            df_top = df_full[df_full["Business Description"].isin(matched_descriptions)].copy().reset_index(drop=True)
+            df_embedded = pd.read_pickle("app_data/df_embedded.pkl")
 
-            valid_indices = [i for i in top_indices if isinstance(i, int) and i >= 0 and i < len(df)]
-
-            # Handle case when no valid indices found
-            if not valid_indices:
+            # Retrieve matched descriptions
+            matched_descriptions = [id_mapping[i] for i in top_indices if 0 <= i < len(id_mapping)]
+            
+            # Match against full embedded DataFrame
+            df_top = df_embedded[df_embedded["Business Description"].isin(matched_descriptions)].copy().reset_index(drop=True)
+            
+            # Keep only rows that still exist in vector DB (guard)
+            if df_top.empty:
                 st.error("No valid matches found. Try different input or rebuild your embedding index.")
                 st.stop()
-            
-            # Retrieve top-matched rows from the DataFrame
-            df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
             df_top["Similarity Score"] = top_scores[:len(valid_indices)]
             
             # ✅ Replaced sequential GPT calls with threaded executor

@@ -5,6 +5,7 @@ import pickle
 from typing import List
 import tiktoken
 from openai import OpenAI
+import streamlit as st
 
 VECTOR_DB_PATH = "app_data/vector_db.index"
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"

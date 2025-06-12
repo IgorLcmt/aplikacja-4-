@@ -462,7 +462,9 @@ def main():
             if df_top.empty:
                 st.error("No valid matches found. Try different input or rebuild your embedding index.")
                 st.stop()
-            df_top["Similarity Score"] = top_scores[:len(valid_indices)]
+            df_top = df_top.reset_index(drop=True)
+            score_len = min(len(df_top), len(top_scores))
+            df_top["Similarity Score"] = top_scores[:score_len]
             
             # ✅ Replaced sequential GPT calls with threaded executor
             with st.spinner("Generating GPT-based similarity explanations..."):

@@ -402,6 +402,7 @@ def main():
 
             # Load the FAISS index and metadata (prebuilt or cached)
             index, metadata = load_vector_db()
+            assert index.ntotal == len(df), "Vector count and dataframe row count mismatch!"
             
             # Generate embeddings for the user query + paraphrases
             query_variants = [query_text] + paraphrase_query(query_text, client)
@@ -413,16 +414,21 @@ def main():
             top_indices = indices[0]
             top_scores = scores[0]
 
+            # Use id_mapping to remap index positions to original df rows (if implemented)
+            valid_indices = [i for i in top_indices if isinstance(i, int) and 0 <= i < len(df)]
+            df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
+            df_top["Similarity Score"] = top_scores
+
             valid_indices = [i for i in top_indices if isinstance(i, int) and i >= 0 and i < len(df)]
-            
+
+            # Handle case when no valid indices found
             if not valid_indices:
                 st.error("No valid matches found. Try different input or rebuild your embedding index.")
                 st.stop()
             
+            # Retrieve top-matched rows from the DataFrame
             df_top = df.iloc[valid_indices].copy().reset_index(drop=True)
-            
-            # Take those rows from the full DataFrame
-            df_top["Similarity Score"] = top_scores
+            df_top["Similarity Score"] = top_scores[:len(valid_indices)]
             
             # ✅ Replaced sequential GPT calls with threaded executor
             with st.spinner("Generating GPT-based similarity explanations..."):

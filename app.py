@@ -364,11 +364,6 @@ def main():
             return
         
         st.session_state["edited_summary"] = query_text
-        
-        print("Original DB size:", len(df_original))
-        print("After industry filter:", len(df))
-        print("After value filter:", len(df after EV filter))  # use temp var if needed
-        print("Top match count before final industry check:", len(df_top))
 
         with st.spinner("Analyzing profile..."):
             from difflib import get_close_matches

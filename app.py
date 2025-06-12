@@ -30,7 +30,7 @@ MAX_TEXT_LENGTH = 4000
 BATCH_SIZE = 100
 MAX_TOKENS = 8000
 RATE_LIMIT_DELAY = 1.0
-SIMILARITY_THRESHOLD = 0.5
+SIMILARITY_THRESHOLD = 0.3
 
 # ===== STREAMLIT CONFIG =====
 st.set_page_config(page_title="CMT Company Analyzer 🔍", layout="wide")

@@ -107,7 +107,6 @@ def load_vector_db():
     return index, metadata
 
 def search_vector_db(query_embedding, top_k=20):
-    index, metadata = load_vector_db()
     scores, indices = index.search(np.array([query_embedding], dtype=np.float32), top_k)
     return [(metadata[i], scores[0][idx]) for idx, i in enumerate(indices[0])]
 

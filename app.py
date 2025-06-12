@@ -79,7 +79,8 @@ def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
 def embed_text_batch(texts: List[str], _client: OpenAI) -> List[List[float]]:
     clean_texts = [truncate_text(t.strip()) for t in texts if isinstance(t, str)]
     for t in clean_texts:
-        assert len(t) > 20, f"Text too short: {t}"
+        if len(t) <= 20:
+            print(f"⚠️ Warning: Skipping short text: {t}")
     embeddings = []
     for i in range(0, len(clean_texts), BATCH_SIZE):
         batch = clean_texts[i:i + BATCH_SIZE]
@@ -296,6 +297,7 @@ def main():
     if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
         st.info("Generating and caching vector database for the first time...")
         descriptions = df["Business Description"].astype(str).tolist()
+        descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
         db_embeddings = embed_text_batch(descriptions, client)
         build_or_load_vector_db(db_embeddings, descriptions)
     else:

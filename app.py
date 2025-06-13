@@ -69,6 +69,15 @@ def load_database():
         st.error(f"Database loading failed: {str(e)}")
         st.stop()
 
+# ===== MAIN START =====
+
+# Call database loader first
+df, industry_list = load_database()
+
+# Extract descriptions early for reuse
+descriptions = df["Business Description"].astype(str).tolist()
+descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
+
 # ===== Load or Rebuild FAISS Index & Mapping =====
 rebuild_needed = False
 

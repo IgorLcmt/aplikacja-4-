@@ -87,7 +87,7 @@ if os.path.exists(VECTOR_DB_PATH) and os.path.exists(VECTOR_MAPPING_PATH):
         id_mapping = pickle.load(f)
 
     if index.ntotal != len(descriptions):
-        st.warning("⚠️ FAISS index count mismatch. Rebuilding embeddings to sync...")
+        st.warning("⚠️ Vector index count does not match dataset rows. Rebuilding embeddings to sync...")
         rebuild_needed = True
     else:
         st.success("✅ Vector database loaded from cache.")

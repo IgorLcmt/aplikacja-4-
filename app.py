@@ -292,8 +292,17 @@ def main():
     
         # ✅ Add this check right here:
         if index.ntotal != len(df):
-            st.error(f"Vector index count ({index.ntotal}) ≠ dataset rows ({len(df)}). Rebuild embeddings to sync.")
-            st.stop()
+            st.warning(f"Vector index count ({index.ntotal}) ≠ dataset rows ({len(df)}). Auto-rebuilding embeddings...")
+        
+            # Regenerate everything
+            descriptions = df["Business Description"].astype(str).tolist()
+            descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
+        
+            db_embeddings = embed_text_batch(descriptions, client)
+            build_or_load_vector_db(db_embeddings, descriptions)
+        
+            st.success("✅ Embeddings rebuilt due to mismatch. Reloading app...")
+            st.rerun()
 
     
     # Load or build FAISS vector DB for business descriptions

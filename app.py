@@ -74,37 +74,6 @@ def load_database():
 # Call database loader first
 df, industry_list = load_database()
 
-# Extract descriptions early for reuse
-descriptions = df["Business Description"].astype(str).tolist()
-descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
-
-# ===== Load or Rebuild FAISS Index & Mapping =====
-rebuild_needed = False
-
-if os.path.exists(VECTOR_DB_PATH) and os.path.exists(VECTOR_MAPPING_PATH):
-    index = faiss.read_index(VECTOR_DB_PATH)
-    with open(VECTOR_MAPPING_PATH, "rb") as f:
-        id_mapping = pickle.load(f)
-
-    if index.ntotal != len(descriptions):
-        st.warning("⚠️ Vector index count does not match dataset rows. Rebuilding embeddings to sync...")
-        rebuild_needed = True
-    else:
-        st.success("✅ Vector database loaded from cache.")
-else:
-    st.info("🛠️ Vector DB not found. Will generate from scratch.")
-    rebuild_needed = True
-
-if rebuild_needed:
-    with st.spinner("🔄 Rebuilding vector database..."):
-        db_embeddings = embed_text_batch(descriptions, client)
-        build_or_load_vector_db(db_embeddings, descriptions)
-        st.success("✅ Embeddings rebuilt and saved.")
-        # Reload after rebuilding
-        index = faiss.read_index(VECTOR_DB_PATH)
-        with open(VECTOR_MAPPING_PATH, "rb") as f:
-            id_mapping = pickle.load(f)
-            
 # ===== TEXT UTILS =====
 def truncate_text(text: str, encoding_name: str = "cl100k_base") -> str:
     encoding = tiktoken.get_encoding(encoding_name)

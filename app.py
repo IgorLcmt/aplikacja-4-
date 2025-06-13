@@ -294,14 +294,23 @@ def main():
         if index.ntotal != len(df):
             st.warning(f"Vector index count ({index.ntotal}) ≠ dataset rows ({len(df)}). Auto-rebuilding embeddings...")
         
-            # Regenerate everything
+            # Rebuild vector index
             descriptions = df["Business Description"].astype(str).tolist()
             descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
         
             db_embeddings = embed_text_batch(descriptions, client)
             build_or_load_vector_db(db_embeddings, descriptions)
         
-            st.success("✅ Embeddings rebuilt due to mismatch. Reloading app...")
+            # ✅ Force reload of rebuilt index and mapping to confirm it's fixed
+            index = faiss.read_index(VECTOR_DB_PATH)
+            with open(VECTOR_MAPPING_PATH, "rb") as f:
+                id_mapping = pickle.load(f)
+        
+            if index.ntotal != len(df) or len(id_mapping) != len(df):
+                st.error("⚠ Rebuild failed to sync index and mapping. Please try restarting manually.")
+                st.stop()
+        
+            st.success("✅ Embeddings rebuilt and verified. Reloading app...")
             st.rerun()
 
     

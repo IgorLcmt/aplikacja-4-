@@ -310,6 +310,12 @@ def main():
 
     df, industry_list = load_database()
 
+    # ===== Initialize session state =====
+    if "generate_new" not in st.session_state:
+        st.session_state.generate_new = False
+    if "results" not in st.session_state:
+        st.session_state.results = None
+
     # Load FAISS index and ID mapping
     
     index, id_mapping = ensure_vector_db(df, client)

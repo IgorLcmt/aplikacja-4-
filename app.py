@@ -22,8 +22,11 @@ from app.logic import embed_text_batch, build_or_load_vector_db
 VECTOR_DB_PATH = "app_data/vector_db.index"
 VECTOR_MAPPING_PATH = "app_data/vector_mapping.pkl"
 
-with open(VECTOR_MAPPING_PATH, "rb") as f:
-    id_mapping = pickle.load(f)
+if os.path.exists(VECTOR_MAPPING_PATH):
+    with open(VECTOR_MAPPING_PATH, "rb") as f:
+        id_mapping = pickle.load(f)
+else:
+    id_mapping = []
     
 # ===== CONSTANTS =====
 MAX_TEXT_LENGTH = 4000

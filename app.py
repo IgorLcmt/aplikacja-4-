@@ -291,29 +291,38 @@ def main():
             id_mapping = pickle.load(f)
     
         # ✅ Add this check right here:
-        if index.ntotal != len(df):
-            st.warning(f"Vector index count ({index.ntotal}) ≠ dataset rows ({len(df)}). Auto-rebuilding embeddings...")
+        descriptions = df["Business Description"].astype(str).tolist()
+        descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
         
-            # Rebuild vector index
-            descriptions = df["Business Description"].astype(str).tolist()
-            descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
+        # Check lengths before embedding
+        if len(descriptions) != len(df):
+            st.error(f"Only {len(descriptions)} valid descriptions found in {len(df)} rows. Cannot proceed.")
+            st.stop()
         
-            db_embeddings = embed_text_batch(descriptions, client)
-            build_or_load_vector_db(db_embeddings, descriptions)
+        # Generate embeddings
+        db_embeddings = embed_text_batch(descriptions, client)
         
-            # ✅ Force reload of rebuilt index and mapping to confirm it's fixed
-            index = faiss.read_index(VECTOR_DB_PATH)
-            with open(VECTOR_MAPPING_PATH, "rb") as f:
-                id_mapping = pickle.load(f)
+        # Verify output
+        if len(db_embeddings) != len(df):
+            st.error(f"Embedding count ({len(db_embeddings)}) doesn't match dataset ({len(df)}). Something failed.")
+            st.stop()
         
-            if index.ntotal != len(df) or len(id_mapping) != len(df):
-                st.error("⚠ Rebuild failed to sync index and mapping. Please try restarting manually.")
-                st.stop()
+        # Save FAISS index and mapping
+        build_or_load_vector_db(db_embeddings, descriptions)
         
-            st.success("✅ Embeddings rebuilt and verified. Reloading app...")
-            st.rerun()
-
-    
+        # Force reload
+        index = faiss.read_index(VECTOR_DB_PATH)
+        with open(VECTOR_MAPPING_PATH, "rb") as f:
+            id_mapping = pickle.load(f)
+        
+        # Final safety check
+        if index.ntotal != len(df) or len(id_mapping) != len(df):
+            st.error("Rebuild failed to sync index and mapping. Please debug manually.")
+            st.stop()
+        
+        st.success("✅ Embeddings rebuilt and verified. Reloading app...")
+        st.rerun()
+            
     # Load or build FAISS vector DB for business descriptions
     if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
         st.info("Generating and caching vector database for the first time...")

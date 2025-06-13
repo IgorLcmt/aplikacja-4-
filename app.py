@@ -336,12 +336,8 @@ def main():
     if not api_key:
         st.error("Missing OpenAI API key.")
         st.stop()
-    client = OpenAI(api_key=api_key)
 
-    session_defaults = {"results": None, "generate_new": False}
-    for k, v in session_defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
+    client = OpenAI(api_key=api_key)  
 
     df, industry_list = load_database()
 

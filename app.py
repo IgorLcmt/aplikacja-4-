@@ -137,6 +137,34 @@ def build_or_load_vector_db(embeddings: List[List[float]], metadata: List[str]):
 def load_faiss_index() -> faiss.Index:
     return faiss.read_index(VECTOR_DB_PATH)
 
+def ensure_vector_db(df: pd.DataFrame, client: OpenAI) -> tuple[faiss.Index, list[str]]:
+    descriptions = df["Business Description"].astype(str).tolist()
+    descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
+
+    index_exists = os.path.exists(VECTOR_DB_PATH)
+    mapping_exists = os.path.exists(VECTOR_MAPPING_PATH)
+
+    if index_exists and mapping_exists:
+        index = faiss.read_index(VECTOR_DB_PATH)
+        with open(VECTOR_MAPPING_PATH, "rb") as f:
+            id_mapping = pickle.load(f)
+
+        if index.ntotal != len(descriptions):
+            print("Vector DB out of sync. Rebuilding...")
+            rebuild = True
+        else:
+            return index, id_mapping
+    else:
+        rebuild = True
+
+    if rebuild:
+        embeddings = embed_text_batch(descriptions, client)
+        build_or_load_vector_db(embeddings, descriptions)
+        index = faiss.read_index(VECTOR_DB_PATH)
+        with open(VECTOR_MAPPING_PATH, "rb") as f:
+            id_mapping = pickle.load(f)
+
+    return index, id_mapping
 
 @st.cache_resource
 def load_vector_db():
@@ -318,17 +346,9 @@ def main():
     df, industry_list = load_database()
 
     # Load FAISS index and ID mapping
-    if os.path.exists(VECTOR_DB_PATH) and os.path.exists(VECTOR_MAPPING_PATH):
-        index = faiss.read_index(VECTOR_DB_PATH)
-        with open(VECTOR_MAPPING_PATH, "rb") as f:
-            id_mapping = pickle.load(f)
     
-        # ✅ Add this check right here:
-        if index.ntotal != len(df):
-            st.error("Vector index count does not match dataset rows. Rebuild embeddings to sync.")
-            st.stop()
+    index, id_mapping = ensure_vector_db(df, client)
 
-    
     # Load or build FAISS vector DB for business descriptions
     if not os.path.exists(VECTOR_DB_PATH) or not os.path.exists(VECTOR_MAPPING_PATH):
         st.info("Generating and caching vector database for the first time...")

@@ -388,22 +388,24 @@ def main():
     
         if st.sidebar.button("🧠 Rebuild Embeddings"):
             st.warning("Rebuilding vector database from scratch...")
+        
             # 1. Save the full DataFrame used for embedding
             df_embedded = df.copy()
             df_embedded.to_pickle("app_data/df_embedded.pkl")
-    
+        
             st.write("📁 Embedded data file exists:", os.path.exists("app_data/df_embedded.pkl"))
-                
+        
             # 2. Extract descriptions
             descriptions = df_embedded["Business Description"].astype(str).tolist()
-                
+            descriptions = [d for d in descriptions if isinstance(d, str) and len(d.strip()) > 20]
+        
             # 3. Embed
             db_embeddings = embed_text_batch(descriptions, client)
-                
+        
             # 4. Build FAISS index
             build_or_load_vector_db(db_embeddings, descriptions)
-    
-            st.success("Embeddings rebuilt and cached.")
+        
+            st.success("✅ Embeddings rebuilt and cached.")
             st.rerun()
 
         if st.button("🔍 Find Matches"):

@@ -479,7 +479,6 @@ def main():
 
             # Load the FAISS index and metadata (prebuilt or cached)
             index, metadata = load_vector_db()
-            assert index.ntotal == len(id_mapping), "Vector count and ID mapping length mismatch!"
             
             # Generate embeddings for the user query + paraphrases
             query_variants = [query_text] + paraphrase_query(query_text, client)

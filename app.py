@@ -289,8 +289,7 @@ def main():
     
         # ✅ Add this check right here:
         if index.ntotal != len(df):
-            st.error("Vector index count does not match dataset rows. Rebuild embeddings to sync.")
-            st.stop()
+            st.warning("⚠️ Vector index and data row count mismatch. Please click '🔁 Rebuild Embeddings' in the sidebar.")
 
     
     # Load or build FAISS vector DB for business descriptions

@@ -121,7 +121,7 @@ def gpt_chat(system_prompt: str, user_prompt: str, client: OpenAI) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.7
+            temperature=0.1
         )
         return response.choices[0].message.content.strip() if response and response.choices else ""
     except Exception:
